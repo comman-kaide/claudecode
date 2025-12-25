@@ -1,179 +1,287 @@
 const express = require('express');
-const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs-extra');
-const ffmpeg = require('fluent-ffmpeg');
-const OpenAI = require('openai');
-require('dotenv').config();
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Ensure upload directories exist
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-const AUDIO_DIR = path.join(__dirname, 'uploads/audio');
-const SUBTITLE_DIR = path.join(__dirname, 'uploads/subtitles');
+// Data directory
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 
-fs.ensureDirSync(UPLOAD_DIR);
-fs.ensureDirSync(AUDIO_DIR);
-fs.ensureDirSync(SUBTITLE_DIR);
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
-// Configure multer for video uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'video-' + uniqueSuffix + path.extname(file.originalname));
+// Initialize data files
+function initDataFiles() {
+  if (!fs.existsSync(USERS_FILE)) {
+    fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2));
   }
+  if (!fs.existsSync(REPORTS_FILE)) {
+    fs.writeFileSync(REPORTS_FILE, JSON.stringify([], null, 2));
+  }
+}
+
+initDataFiles();
+
+// Helper functions
+function readUsers() {
+  const data = fs.readFileSync(USERS_FILE, 'utf-8');
+  return JSON.parse(data);
+}
+
+function writeUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+function readReports() {
+  const data = fs.readFileSync(REPORTS_FILE, 'utf-8');
+  return JSON.parse(data);
+}
+
+function writeReports(reports) {
+  fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2));
+}
+
+// ========== User API ==========
+
+// Get all users
+app.get('/api/users', (req, res) => {
+  const users = readUsers();
+  res.json(users);
 });
 
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /mp4|avi|mov|mkv|webm/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+// Create new user
+app.post('/api/users', (req, res) => {
+  const { name, email } = req.body;
 
-    if (extname && mimetype) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only video files are allowed!'));
+  if (!name || !email) {
+    return res.status(400).json({ error: '名前とメールアドレスは必須です' });
+  }
+
+  const users = readUsers();
+
+  // Check for duplicate email
+  if (users.find(u => u.email === email)) {
+    return res.status(400).json({ error: 'このメールアドレスは既に登録されています' });
+  }
+
+  // Check max users (10 for small teams)
+  if (users.length >= 10) {
+    return res.status(400).json({ error: 'チームメンバーは最大10名までです' });
+  }
+
+  const newUser = {
+    id: uuidv4(),
+    name,
+    email,
+    createdAt: new Date().toISOString()
+  };
+
+  users.push(newUser);
+  writeUsers(users);
+
+  res.status(201).json(newUser);
+});
+
+// Delete user
+app.delete('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  let users = readUsers();
+
+  const userIndex = users.findIndex(u => u.id === id);
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'ユーザーが見つかりません' });
+  }
+
+  users = users.filter(u => u.id !== id);
+  writeUsers(users);
+
+  // Also delete user's reports
+  let reports = readReports();
+  reports = reports.filter(r => r.userId !== id);
+  writeReports(reports);
+
+  res.json({ message: 'ユーザーを削除しました' });
+});
+
+// ========== Report API ==========
+
+// Get all reports (with optional filters)
+app.get('/api/reports', (req, res) => {
+  const { userId, date, startDate, endDate } = req.query;
+  let reports = readReports();
+  const users = readUsers();
+
+  // Filter by userId
+  if (userId) {
+    reports = reports.filter(r => r.userId === userId);
+  }
+
+  // Filter by specific date
+  if (date) {
+    reports = reports.filter(r => r.date === date);
+  }
+
+  // Filter by date range
+  if (startDate && endDate) {
+    reports = reports.filter(r => r.date >= startDate && r.date <= endDate);
+  }
+
+  // Add user info to each report
+  reports = reports.map(r => ({
+    ...r,
+    user: users.find(u => u.id === r.userId) || { name: '不明なユーザー' }
+  }));
+
+  // Sort by date (newest first) and then by creation time
+  reports.sort((a, b) => {
+    if (a.date !== b.date) {
+      return b.date.localeCompare(a.date);
     }
-  }
-});
-
-// Function to extract audio from video
-async function extractAudio(videoPath, audioPath) {
-  return new Promise((resolve, reject) => {
-    ffmpeg(videoPath)
-      .output(audioPath)
-      .audioCodec('libmp3lame')
-      .audioFrequency(16000)
-      .audioChannels(1)
-      .on('end', () => resolve(audioPath))
-      .on('error', (err) => reject(err))
-      .run();
-  });
-}
-
-// Function to transcribe audio using Whisper API
-async function transcribeAudio(audioPath) {
-  const audioFile = fs.createReadStream(audioPath);
-
-  const transcription = await openai.audio.transcriptions.create({
-    file: audioFile,
-    model: 'whisper-1',
-    response_format: 'verbose_json',
-    timestamp_granularities: ['segment']
+    return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
-  return transcription;
-}
+  res.json(reports);
+});
 
-// Function to convert transcription to SRT format
-function generateSRT(transcription) {
-  let srtContent = '';
+// Get single report
+app.get('/api/reports/:id', (req, res) => {
+  const { id } = req.params;
+  const reports = readReports();
+  const users = readUsers();
 
-  transcription.segments.forEach((segment, index) => {
-    const startTime = formatTime(segment.start);
-    const endTime = formatTime(segment.end);
-    const text = segment.text.trim();
+  const report = reports.find(r => r.id === id);
+  if (!report) {
+    return res.status(404).json({ error: '日報が見つかりません' });
+  }
 
-    srtContent += `${index + 1}\n`;
-    srtContent += `${startTime} --> ${endTime}\n`;
-    srtContent += `${text}\n\n`;
+  res.json({
+    ...report,
+    user: users.find(u => u.id === report.userId) || { name: '不明なユーザー' }
   });
-
-  return srtContent;
-}
-
-// Function to format time for SRT (HH:MM:SS,mmm)
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
-
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;
-}
-
-// POST endpoint to upload video and generate subtitles
-app.post('/api/upload', upload.single('video'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No video file uploaded' });
-    }
-
-    const videoPath = req.file.path;
-    const audioPath = path.join(AUDIO_DIR, `audio-${Date.now()}.mp3`);
-    const subtitlePath = path.join(SUBTITLE_DIR, `subtitle-${Date.now()}.srt`);
-
-    console.log('Processing video:', req.file.originalname);
-
-    // Step 1: Extract audio from video
-    console.log('Extracting audio...');
-    await extractAudio(videoPath, audioPath);
-
-    // Step 2: Transcribe audio using Whisper
-    console.log('Transcribing audio...');
-    const transcription = await transcribeAudio(audioPath);
-
-    // Step 3: Generate SRT file
-    console.log('Generating subtitles...');
-    const srtContent = generateSRT(transcription);
-    await fs.writeFile(subtitlePath, srtContent, 'utf-8');
-
-    // Clean up temporary files
-    await fs.remove(videoPath);
-    await fs.remove(audioPath);
-
-    res.json({
-      success: true,
-      message: 'Subtitles generated successfully',
-      subtitle: srtContent,
-      downloadUrl: `/api/download/${path.basename(subtitlePath)}`
-    });
-
-  } catch (error) {
-    console.error('Error processing video:', error);
-    res.status(500).json({
-      error: 'Failed to process video',
-      details: error.message
-    });
-  }
 });
 
-// GET endpoint to download subtitle file
-app.get('/api/download/:filename', (req, res) => {
-  const filePath = path.join(SUBTITLE_DIR, req.params.filename);
+// Create new report
+app.post('/api/reports', (req, res) => {
+  const { userId, date, todayWork, tomorrowPlan, issues, memo } = req.body;
 
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: 'Subtitle file not found' });
+  if (!userId || !date || !todayWork) {
+    return res.status(400).json({ error: 'ユーザー、日付、今日の作業内容は必須です' });
   }
 
-  res.download(filePath, 'subtitles.srt');
+  const users = readUsers();
+  if (!users.find(u => u.id === userId)) {
+    return res.status(400).json({ error: 'ユーザーが見つかりません' });
+  }
+
+  const reports = readReports();
+
+  // Check if report already exists for this user and date
+  const existingReport = reports.find(r => r.userId === userId && r.date === date);
+  if (existingReport) {
+    return res.status(400).json({ error: 'この日の日報は既に提出されています。編集してください。' });
+  }
+
+  const newReport = {
+    id: uuidv4(),
+    userId,
+    date,
+    todayWork,
+    tomorrowPlan: tomorrowPlan || '',
+    issues: issues || '',
+    memo: memo || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  reports.push(newReport);
+  writeReports(reports);
+
+  res.status(201).json(newReport);
 });
 
-// Health check endpoint
+// Update report
+app.put('/api/reports/:id', (req, res) => {
+  const { id } = req.params;
+  const { todayWork, tomorrowPlan, issues, memo } = req.body;
+
+  const reports = readReports();
+  const reportIndex = reports.findIndex(r => r.id === id);
+
+  if (reportIndex === -1) {
+    return res.status(404).json({ error: '日報が見つかりません' });
+  }
+
+  reports[reportIndex] = {
+    ...reports[reportIndex],
+    todayWork: todayWork !== undefined ? todayWork : reports[reportIndex].todayWork,
+    tomorrowPlan: tomorrowPlan !== undefined ? tomorrowPlan : reports[reportIndex].tomorrowPlan,
+    issues: issues !== undefined ? issues : reports[reportIndex].issues,
+    memo: memo !== undefined ? memo : reports[reportIndex].memo,
+    updatedAt: new Date().toISOString()
+  };
+
+  writeReports(reports);
+  res.json(reports[reportIndex]);
+});
+
+// Delete report
+app.delete('/api/reports/:id', (req, res) => {
+  const { id } = req.params;
+  let reports = readReports();
+
+  const reportIndex = reports.findIndex(r => r.id === id);
+  if (reportIndex === -1) {
+    return res.status(404).json({ error: '日報が見つかりません' });
+  }
+
+  reports = reports.filter(r => r.id !== id);
+  writeReports(reports);
+
+  res.json({ message: '日報を削除しました' });
+});
+
+// ========== Stats API ==========
+
+// Get submission stats
+app.get('/api/stats', (req, res) => {
+  const { date } = req.query;
+  const users = readUsers();
+  const reports = readReports();
+
+  const targetDate = date || new Date().toISOString().split('T')[0];
+
+  const todayReports = reports.filter(r => r.date === targetDate);
+  const submittedUserIds = todayReports.map(r => r.userId);
+
+  const stats = {
+    date: targetDate,
+    totalUsers: users.length,
+    submitted: todayReports.length,
+    notSubmitted: users.length - todayReports.length,
+    submittedUsers: users.filter(u => submittedUserIds.includes(u.id)),
+    notSubmittedUsers: users.filter(u => !submittedUserIds.includes(u.id))
+  };
+
+  res.json(stats);
+});
+
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Auto Subtitle Generator API is running' });
+  res.json({ status: 'ok', message: '日報アプリは正常に動作しています' });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Upload videos to generate subtitles automatically!`);
+  console.log(`日報アプリが起動しました: http://localhost:${PORT}`);
 });

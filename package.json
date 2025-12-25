@@ -1,23 +1,19 @@
 {
-  "name": "auto-subtitle-generator",
+  "name": "daily-report-app",
   "version": "1.0.0",
-  "description": "Automatic subtitle generator for videos using OpenAI Whisper API",
+  "description": "小規模チーム向け日報管理アプリ（10名以下）",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["subtitle", "video", "transcription", "whisper"],
+  "keywords": ["daily-report", "team", "management", "日報"],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "multer": "^1.4.5-lts.1",
     "cors": "^2.8.5",
-    "openai": "^4.20.1",
-    "fluent-ffmpeg": "^2.1.2",
-    "fs-extra": "^11.2.0",
-    "dotenv": "^16.3.1"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

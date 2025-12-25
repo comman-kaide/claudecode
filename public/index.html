@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自動字幕生成アプリ | Auto Subtitle Generator</title>
+    <title>日報アプリ | Daily Report</title>
     <style>
         * {
             margin: 0;
@@ -12,442 +12,976 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+            background: #f5f7fa;
             min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
+            color: #333;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4a90d9 0%, #357abd 100%);
             color: white;
-            padding: 40px;
-            text-align: center;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 1.8em;
+            font-weight: 600;
         }
 
         .header p {
-            font-size: 1.1em;
+            font-size: 0.9em;
             opacity: 0.9;
+            margin-top: 5px;
         }
 
-        .content {
-            padding: 40px;
-        }
-
-        .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 60px 20px;
-            text-align: center;
-            background: #f8f9ff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 30px;
-        }
-
-        .upload-area:hover {
-            background: #f0f2ff;
-            border-color: #764ba2;
-        }
-
-        .upload-area.dragover {
-            background: #e8ebff;
-            border-color: #764ba2;
-            transform: scale(1.02);
-        }
-
-        .upload-icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-        }
-
-        .upload-area h3 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 1.5em;
-        }
-
-        .upload-area p {
-            color: #666;
-            font-size: 1em;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .file-info {
-            background: #f8f9ff;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
-            border-radius: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            color: #666;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .tab-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .tab-btn.active {
+            background: #4a90d9;
+            color: white;
+        }
+
+        .tab-content {
             display: none;
         }
 
-        .file-info.show {
+        .tab-content.active {
             display: block;
         }
 
-        .file-name {
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 10px;
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
-        .progress-container {
-            background: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            height: 30px;
-            margin-bottom: 10px;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.3s ease;
+        .card-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #444;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #4a90d9;
             color: white;
-            font-weight: bold;
         }
 
-        .status {
-            text-align: center;
-            color: #666;
-            font-size: 0.95em;
+        .btn-primary:hover {
+            background: #357abd;
         }
 
-        .subtitle-preview {
-            background: #f8f9ff;
-            border: 1px solid #667eea;
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        .report-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .report-item {
+            background: #f8f9fa;
             border-radius: 10px;
             padding: 20px;
-            margin-top: 30px;
-            display: none;
-            max-height: 400px;
-            overflow-y: auto;
+            border-left: 4px solid #4a90d9;
         }
 
-        .subtitle-preview.show {
-            display: block;
-        }
-
-        .subtitle-preview h3 {
-            color: #667eea;
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .report-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .report-user {
+            font-weight: 600;
+            color: #4a90d9;
+        }
+
+        .report-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .report-section {
+            margin-bottom: 12px;
+        }
+
+        .report-section-title {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .report-section-content {
+            color: #333;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .user-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .user-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .subtitle-content {
-            background: white;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            font-family: 'Courier New', monospace;
+        .user-info h3 {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .user-info p {
+            color: #666;
             font-size: 0.9em;
-            line-height: 1.6;
         }
 
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            display: none;
-        }
-
-        .error-message.show {
-            display: block;
-        }
-
-        .success-message {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            display: none;
-        }
-
-        .success-message.show {
-            display: block;
-        }
-
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-            display: none;
-        }
-
-        .spinner.show {
-            display: block;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .info-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 10px;
-            padding: 15px;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .info-box strong {
-            color: #856404;
+        .stat-card {
+            background: linear-gradient(135deg, #4a90d9 0%, #357abd 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        }
+
+        .stat-card.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #333;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .submission-list {
+            margin-top: 15px;
+        }
+
+        .submission-list h4 {
+            font-size: 1em;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .submission-list ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .submission-list li {
+            background: #f0f0f0;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .submission-list li.submitted {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .submission-list li.not-submitted {
+            background: #f8d7da;
+            color: #721c24;
         }
     </style>
 </head>
 <body>
+    <header class="header">
+        <h1>Daily Report</h1>
+        <p>小規模チーム向け日報管理アプリ</p>
+    </header>
+
     <div class="container">
-        <div class="header">
-            <h1>🎬 自動字幕生成</h1>
-            <p>動画をアップロードするだけで、AIが自動的に字幕を生成します</p>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="write">日報を書く</button>
+            <button class="tab-btn" data-tab="reports">日報一覧</button>
+            <button class="tab-btn" data-tab="stats">提出状況</button>
+            <button class="tab-btn" data-tab="members">メンバー管理</button>
         </div>
 
-        <div class="content">
-            <div class="info-box">
-                <strong>使い方:</strong> 動画ファイル（MP4, AVI, MOV, MKV, WebM）をアップロードしてください。
-                OpenAI Whisper APIを使用して、音声から字幕を自動生成します。
+        <div id="alert-container"></div>
+
+        <!-- 日報を書く -->
+        <div id="tab-write" class="tab-content active">
+            <div class="card">
+                <h2 class="card-title">日報作成</h2>
+                <form id="report-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="report-user">名前 *</label>
+                            <select id="report-user" required>
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="report-date">日付 *</label>
+                            <input type="date" id="report-date" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="report-today">今日やったこと *</label>
+                        <textarea id="report-today" placeholder="本日の作業内容を入力してください" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="report-tomorrow">明日やること</label>
+                        <textarea id="report-tomorrow" placeholder="明日の予定を入力してください"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="report-issues">困っていること・相談事項</label>
+                        <textarea id="report-issues" placeholder="課題や相談したいことがあれば入力してください"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="report-memo">メモ・その他</label>
+                        <textarea id="report-memo" placeholder="その他の連絡事項があれば入力してください"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">日報を提出</button>
+                </form>
             </div>
+        </div>
 
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📹</div>
-                <h3>動画をアップロード</h3>
-                <p>クリックしてファイルを選択、またはドラッグ＆ドロップ</p>
-                <p style="margin-top: 10px; font-size: 0.9em; color: #999;">
-                    対応フォーマット: MP4, AVI, MOV, MKV, WebM (最大100MB)
-                </p>
-            </div>
-
-            <input type="file" id="fileInput" accept="video/*">
-
-            <div class="file-info" id="fileInfo">
-                <div class="file-name" id="fileName"></div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="progressBar">0%</div>
+        <!-- 日報一覧 -->
+        <div id="tab-reports" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">日報一覧</h2>
+                <div class="filter-bar">
+                    <select id="filter-user">
+                        <option value="">全員</option>
+                    </select>
+                    <input type="date" id="filter-date" placeholder="日付で絞り込み">
+                    <button class="btn btn-secondary btn-sm" id="clear-filters">フィルタをクリア</button>
                 </div>
-                <div class="status" id="status">準備中...</div>
+                <div class="report-list" id="report-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128196;</div>
+                        <p>日報がありません</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提出状況 -->
+        <div id="tab-stats" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">提出状況</h2>
+                <div class="form-group" style="max-width: 200px;">
+                    <label for="stats-date">日付</label>
+                    <input type="date" id="stats-date">
+                </div>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-total">0</div>
+                        <div class="stat-label">メンバー数</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-number" id="stat-submitted">0</div>
+                        <div class="stat-label">提出済み</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="stat-number" id="stat-not-submitted">0</div>
+                        <div class="stat-label">未提出</div>
+                    </div>
+                </div>
+                <div class="submission-list" id="submission-list"></div>
+            </div>
+        </div>
+
+        <!-- メンバー管理 -->
+        <div id="tab-members" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">メンバー追加</h2>
+                <form id="user-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="user-name">名前 *</label>
+                            <input type="text" id="user-name" placeholder="山田 太郎" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="user-email">メールアドレス *</label>
+                            <input type="email" id="user-email" placeholder="yamada@example.com" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">メンバーを追加</button>
+                </form>
             </div>
 
-            <div class="spinner" id="spinner"></div>
-
-            <div class="error-message" id="errorMessage"></div>
-            <div class="success-message" id="successMessage"></div>
-
-            <div class="subtitle-preview" id="subtitlePreview">
-                <h3>
-                    <span>生成された字幕</span>
-                    <button class="btn" id="downloadBtn" style="margin: 0;">ダウンロード</button>
-                </h3>
-                <div class="subtitle-content" id="subtitleContent"></div>
+            <div class="card">
+                <h2 class="card-title">メンバー一覧 (<span id="member-count">0</span>/10名)</h2>
+                <div class="user-list" id="user-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128100;</div>
+                        <p>メンバーがいません</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- 編集モーダル -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>日報を編集</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <div class="form-group">
+                    <label for="edit-today">今日やったこと *</label>
+                    <textarea id="edit-today" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-tomorrow">明日やること</label>
+                    <textarea id="edit-tomorrow"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-issues">困っていること・相談事項</label>
+                    <textarea id="edit-issues"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-memo">メモ・その他</label>
+                    <textarea id="edit-memo"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn btn-secondary" id="modal-cancel">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const progressBar = document.getElementById('progressBar');
-        const status = document.getElementById('status');
-        const spinner = document.getElementById('spinner');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        const subtitlePreview = document.getElementById('subtitlePreview');
-        const subtitleContent = document.getElementById('subtitleContent');
-        const downloadBtn = document.getElementById('downloadBtn');
+        // API base URL
+        const API_BASE = '/api';
 
-        let downloadUrl = '';
+        // State
+        let users = [];
+        let reports = [];
 
-        // Click to upload
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initTabs();
+            initForms();
+            loadUsers();
+            loadReports();
+            loadStats();
+            setDefaultDates();
         });
 
-        // File selection
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
+        // Set default dates
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('report-date').value = today;
+            document.getElementById('stats-date').value = today;
+        }
 
-        // Drag and drop
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
+        // Tabs
+        function initTabs() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
 
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
+                    if (btn.dataset.tab === 'reports') loadReports();
+                    if (btn.dataset.tab === 'stats') loadStats();
+                });
+            });
+        }
 
-            if (e.dataTransfer.files.length > 0) {
-                const file = e.dataTransfer.files[0];
-                if (file.type.startsWith('video/')) {
-                    fileInput.files = e.dataTransfer.files;
-                    handleFile(file);
-                } else {
-                    showError('動画ファイルをアップロードしてください');
+        // Forms
+        function initForms() {
+            // User form
+            document.getElementById('user-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('user-name').value;
+                const email = document.getElementById('user-email').value;
+
+                try {
+                    const res = await fetch(`${API_BASE}/users`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email })
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) throw new Error(data.error);
+
+                    showAlert('メンバーを追加しました', 'success');
+                    document.getElementById('user-form').reset();
+                    loadUsers();
+                } catch (err) {
+                    showAlert(err.message, 'error');
                 }
+            });
+
+            // Report form
+            document.getElementById('report-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userId = document.getElementById('report-user').value;
+                const date = document.getElementById('report-date').value;
+                const todayWork = document.getElementById('report-today').value;
+                const tomorrowPlan = document.getElementById('report-tomorrow').value;
+                const issues = document.getElementById('report-issues').value;
+                const memo = document.getElementById('report-memo').value;
+
+                try {
+                    const res = await fetch(`${API_BASE}/reports`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, date, todayWork, tomorrowPlan, issues, memo })
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) throw new Error(data.error);
+
+                    showAlert('日報を提出しました', 'success');
+                    document.getElementById('report-form').reset();
+                    setDefaultDates();
+                    loadReports();
+                    loadStats();
+                } catch (err) {
+                    showAlert(err.message, 'error');
+                }
+            });
+
+            // Filter handlers
+            document.getElementById('filter-user').addEventListener('change', loadReports);
+            document.getElementById('filter-date').addEventListener('change', loadReports);
+            document.getElementById('clear-filters').addEventListener('click', () => {
+                document.getElementById('filter-user').value = '';
+                document.getElementById('filter-date').value = '';
+                loadReports();
+            });
+
+            // Stats date handler
+            document.getElementById('stats-date').addEventListener('change', loadStats);
+
+            // Edit form
+            document.getElementById('edit-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('edit-id').value;
+                const todayWork = document.getElementById('edit-today').value;
+                const tomorrowPlan = document.getElementById('edit-tomorrow').value;
+                const issues = document.getElementById('edit-issues').value;
+                const memo = document.getElementById('edit-memo').value;
+
+                try {
+                    const res = await fetch(`${API_BASE}/reports/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ todayWork, tomorrowPlan, issues, memo })
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) throw new Error(data.error);
+
+                    showAlert('日報を更新しました', 'success');
+                    closeModal();
+                    loadReports();
+                } catch (err) {
+                    showAlert(err.message, 'error');
+                }
+            });
+
+            // Modal handlers
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+            document.getElementById('modal-cancel').addEventListener('click', closeModal);
+            document.getElementById('edit-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'edit-modal') closeModal();
+            });
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_BASE}/users`);
+                users = await res.json();
+
+                updateUserSelects();
+                renderUserList();
+            } catch (err) {
+                showAlert('メンバーの読み込みに失敗しました', 'error');
             }
-        });
+        }
 
-        async function handleFile(file) {
-            hideMessages();
-            fileName.textContent = `📁 ${file.name}`;
-            fileInfo.classList.add('show');
-            status.textContent = '動画をアップロード中...';
-            progressBar.style.width = '0%';
-            progressBar.textContent = '0%';
+        function updateUserSelects() {
+            const selects = ['report-user', 'filter-user'];
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                const currentValue = select.value;
+                select.innerHTML = id === 'filter-user'
+                    ? '<option value="">全員</option>'
+                    : '<option value="">選択してください</option>';
 
-            const formData = new FormData();
-            formData.append('video', file);
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.name;
+                    select.appendChild(option);
+                });
+
+                select.value = currentValue;
+            });
+        }
+
+        function renderUserList() {
+            const list = document.getElementById('user-list');
+            document.getElementById('member-count').textContent = users.length;
+
+            if (users.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128100;</div>
+                        <p>メンバーがいません</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <div class="user-info">
+                        <h3>${escapeHtml(user.name)}</h3>
+                        <p>${escapeHtml(user.email)}</p>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')">削除</button>
+                </div>
+            `).join('');
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('このメンバーを削除しますか？関連する日報も削除されます。')) return;
 
             try {
-                const xhr = new XMLHttpRequest();
+                const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' });
+                const data = await res.json();
 
-                // Progress tracking
-                xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable) {
-                        const percentComplete = Math.round((e.loaded / e.total) * 100);
-                        progressBar.style.width = percentComplete + '%';
-                        progressBar.textContent = percentComplete + '%';
-                        status.textContent = `アップロード中... ${percentComplete}%`;
-                    }
-                });
+                if (!res.ok) throw new Error(data.error);
 
-                xhr.addEventListener('load', () => {
-                    if (xhr.status === 200) {
-                        const response = JSON.parse(xhr.responseText);
-                        handleSuccess(response);
-                    } else {
-                        const error = JSON.parse(xhr.responseText);
-                        showError(error.error || '処理に失敗しました');
-                        fileInfo.classList.remove('show');
-                    }
-                    spinner.classList.remove('show');
-                });
-
-                xhr.addEventListener('error', () => {
-                    showError('ネットワークエラーが発生しました');
-                    fileInfo.classList.remove('show');
-                    spinner.classList.remove('show');
-                });
-
-                xhr.open('POST', '/api/upload');
-                xhr.send(formData);
-
-                // Show processing status after upload
-                xhr.upload.addEventListener('loadend', () => {
-                    progressBar.style.width = '100%';
-                    progressBar.textContent = '100%';
-                    status.textContent = '音声を抽出中...';
-                    spinner.classList.add('show');
-
-                    setTimeout(() => {
-                        status.textContent = 'AIで音声認識中... (数分かかる場合があります)';
-                    }, 2000);
-                });
-
-            } catch (error) {
-                showError('エラーが発生しました: ' + error.message);
-                fileInfo.classList.remove('show');
-                spinner.classList.remove('show');
+                showAlert('メンバーを削除しました', 'success');
+                loadUsers();
+                loadReports();
+                loadStats();
+            } catch (err) {
+                showAlert(err.message, 'error');
             }
         }
 
-        function handleSuccess(response) {
-            status.textContent = '字幕生成完了!';
-            showSuccess('字幕が正常に生成されました!');
+        // Load reports
+        async function loadReports() {
+            try {
+                const userId = document.getElementById('filter-user').value;
+                const date = document.getElementById('filter-date').value;
 
-            subtitleContent.textContent = response.subtitle;
-            subtitlePreview.classList.add('show');
-            downloadUrl = response.downloadUrl;
+                let url = `${API_BASE}/reports?`;
+                if (userId) url += `userId=${userId}&`;
+                if (date) url += `date=${date}&`;
+
+                const res = await fetch(url);
+                reports = await res.json();
+
+                renderReportList();
+            } catch (err) {
+                showAlert('日報の読み込みに失敗しました', 'error');
+            }
+        }
+
+        function renderReportList() {
+            const list = document.getElementById('report-list');
+
+            if (reports.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128196;</div>
+                        <p>日報がありません</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = reports.map(report => `
+                <div class="report-item">
+                    <div class="report-header">
+                        <div class="report-meta">
+                            <span class="report-user">${escapeHtml(report.user.name)}</span>
+                            <span class="report-date">${formatDate(report.date)}</span>
+                        </div>
+                        <div class="report-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="editReport('${report.id}')">編集</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteReport('${report.id}')">削除</button>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <div class="report-section-title">今日やったこと</div>
+                        <div class="report-section-content">${escapeHtml(report.todayWork)}</div>
+                    </div>
+                    ${report.tomorrowPlan ? `
+                    <div class="report-section">
+                        <div class="report-section-title">明日やること</div>
+                        <div class="report-section-content">${escapeHtml(report.tomorrowPlan)}</div>
+                    </div>
+                    ` : ''}
+                    ${report.issues ? `
+                    <div class="report-section">
+                        <div class="report-section-title">困っていること・相談事項</div>
+                        <div class="report-section-content">${escapeHtml(report.issues)}</div>
+                    </div>
+                    ` : ''}
+                    ${report.memo ? `
+                    <div class="report-section">
+                        <div class="report-section-title">メモ・その他</div>
+                        <div class="report-section-content">${escapeHtml(report.memo)}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function editReport(id) {
+            const report = reports.find(r => r.id === id);
+            if (!report) return;
+
+            document.getElementById('edit-id').value = report.id;
+            document.getElementById('edit-today').value = report.todayWork;
+            document.getElementById('edit-tomorrow').value = report.tomorrowPlan;
+            document.getElementById('edit-issues').value = report.issues;
+            document.getElementById('edit-memo').value = report.memo;
+
+            document.getElementById('edit-modal').classList.add('active');
+        }
+
+        async function deleteReport(id) {
+            if (!confirm('この日報を削除しますか？')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/reports/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error);
+
+                showAlert('日報を削除しました', 'success');
+                loadReports();
+                loadStats();
+            } catch (err) {
+                showAlert(err.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const date = document.getElementById('stats-date').value;
+                const res = await fetch(`${API_BASE}/stats?date=${date}`);
+                const stats = await res.json();
+
+                document.getElementById('stat-total').textContent = stats.totalUsers;
+                document.getElementById('stat-submitted').textContent = stats.submitted;
+                document.getElementById('stat-not-submitted').textContent = stats.notSubmitted;
+
+                const list = document.getElementById('submission-list');
+                list.innerHTML = '';
+
+                if (stats.submittedUsers.length > 0) {
+                    list.innerHTML += `
+                        <h4>提出済み</h4>
+                        <ul>
+                            ${stats.submittedUsers.map(u => `<li class="submitted">${escapeHtml(u.name)}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+
+                if (stats.notSubmittedUsers.length > 0) {
+                    list.innerHTML += `
+                        <h4 style="margin-top: 15px;">未提出</h4>
+                        <ul>
+                            ${stats.notSubmittedUsers.map(u => `<li class="not-submitted">${escapeHtml(u.name)}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+
+                if (stats.totalUsers === 0) {
+                    list.innerHTML = '<p style="color: #999;">メンバーがいません</p>';
+                }
+            } catch (err) {
+                showAlert('統計の読み込みに失敗しました', 'error');
+            }
+        }
+
+        // Utilities
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
 
             setTimeout(() => {
-                fileInfo.classList.remove('show');
-            }, 2000);
+                alert.remove();
+            }, 4000);
         }
 
-        downloadBtn.addEventListener('click', () => {
-            if (downloadUrl) {
-                window.location.href = downloadUrl;
-            }
-        });
-
-        function showError(message) {
-            errorMessage.textContent = '❌ ' + message;
-            errorMessage.classList.add('show');
-            successMessage.classList.remove('show');
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+            const weekday = weekdays[date.getDay()];
+            return `${year}年${month}月${day}日 (${weekday})`;
         }
 
-        function showSuccess(message) {
-            successMessage.textContent = '✅ ' + message;
-            successMessage.classList.add('show');
-            errorMessage.classList.remove('show');
-        }
-
-        function hideMessages() {
-            errorMessage.classList.remove('show');
-            successMessage.classList.remove('show');
-            subtitlePreview.classList.remove('show');
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>
