@@ -1,13 +1,13 @@
 {
-  "name": "auto-subtitle-generator",
+  "name": "web-apps-collection",
   "version": "1.0.0",
-  "description": "Automatic subtitle generator for videos using OpenAI Whisper API",
+  "description": "Collection of web applications including auto subtitle generator and typing game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["subtitle", "video", "transcription", "whisper"],
+  "keywords": ["subtitle", "video", "transcription", "whisper", "typing-game", "wpm"],
   "author": "",
   "license": "MIT",
   "dependencies": {
