@@ -1,0 +1,17 @@
+export const COLORS = {
+  background: '#0a0e1a',
+  mapFill: '#1a2340',
+  mapStroke: '#2dd4bf',
+  mapStrokeLight: 'rgba(45, 212, 191, 0.3)',
+  routeLine: '#f59e0b',
+  routeGlow: 'rgba(245, 158, 11, 0.6)',
+  cityDot: '#f43f5e',
+  cityGlow: 'rgba(244, 63, 94, 0.5)',
+  labelText: '#e2e8f0',
+  worldDot: '#64748b',
+  eiffelGold: '#d4a843',
+  eiffelDark: '#8b7355',
+  skyTop: '#0c1445',
+  skyBottom: '#1a1a3e',
+  starWhite: '#ffffff',
+} as const;
