@@ -7,10 +7,13 @@ const ffmpeg = require('fluent-ffmpeg');
 const OpenAI = require('openai');
 require('dotenv').config();
 
+const { handleMessage } = require('./services/agent');
+const { startSlackBot } = require('./services/slack');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize OpenAI client
+// Initialize OpenAI client (for subtitle generation)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
@@ -168,12 +171,40 @@ app.get('/api/download/:filename', (req, res) => {
   res.download(filePath, 'subtitles.srt');
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Auto Subtitle Generator API is running' });
+// ========== AI Secretary Agent API ==========
+
+// POST endpoint to send a message to the AI secretary
+app.post('/api/agent/message', async (req, res) => {
+  try {
+    const { userId, message } = req.body;
+    if (!userId || !message) {
+      return res.status(400).json({ error: 'userId and message are required' });
+    }
+    const reply = await handleMessage(userId, message);
+    res.json({ success: true, reply });
+  } catch (error) {
+    console.error('Agent error:', error);
+    res.status(500).json({ error: 'Failed to process message', details: error.message });
+  }
 });
 
-app.listen(PORT, () => {
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'AI Secretary Agent is running',
+    features: ['subtitle-generator', 'ai-secretary', 'slack-bot'],
+  });
+});
+
+app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   console.log(`Upload videos to generate subtitles automatically!`);
+
+  // Start Slack bot if configured
+  try {
+    await startSlackBot();
+  } catch (error) {
+    console.error('Failed to start Slack bot:', error.message);
+  }
 });
