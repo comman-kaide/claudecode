@@ -43,19 +43,25 @@ const storage = multer.diskStorage({
   }
 });
 
+const ALLOWED_EXTENSIONS = new Set(['.mp4', '.avi', '.mov', '.mkv', '.webm']);
+const ALLOWED_MIMETYPES = new Set([
+  'video/mp4',
+  'video/avi',
+  'video/x-msvideo',
+  'video/quicktime',
+  'video/x-matroska',
+  'video/webm',
+]);
+
 const upload = multer({
   storage: storage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /mp4|avi|mov|mkv|webm/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (extname && mimetype) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED_EXTENSIONS.has(ext) && ALLOWED_MIMETYPES.has(file.mimetype)) {
       return cb(null, true);
-    } else {
-      cb(new Error('Only video files are allowed!'));
     }
+    cb(new Error('Only video files are allowed!'));
   }
 });
 
@@ -116,13 +122,16 @@ function formatTime(seconds) {
 
 // POST endpoint to upload video and generate subtitles
 app.post('/api/upload', upload.single('video'), async (req, res) => {
+  let videoPath = null;
+  let audioPath = null;
+
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No video file uploaded' });
     }
 
-    const videoPath = req.file.path;
-    const audioPath = path.join(AUDIO_DIR, `audio-${Date.now()}.mp3`);
+    videoPath = req.file.path;
+    audioPath = path.join(AUDIO_DIR, `audio-${Date.now()}.mp3`);
     const subtitlePath = path.join(SUBTITLE_DIR, `subtitle-${Date.now()}.srt`);
 
     console.log('Processing video:', req.file.originalname);
@@ -142,7 +151,9 @@ app.post('/api/upload', upload.single('video'), async (req, res) => {
 
     // Clean up temporary files
     await fs.remove(videoPath);
+    videoPath = null;
     await fs.remove(audioPath);
+    audioPath = null;
 
     res.json({
       success: true,
@@ -153,6 +164,9 @@ app.post('/api/upload', upload.single('video'), async (req, res) => {
 
   } catch (error) {
     console.error('Error processing video:', error);
+    // Clean up any temp files that were created before the error
+    if (videoPath) await fs.remove(videoPath).catch(() => {});
+    if (audioPath) await fs.remove(audioPath).catch(() => {});
     res.status(500).json({
       error: 'Failed to process video',
       details: error.message
@@ -162,7 +176,14 @@ app.post('/api/upload', upload.single('video'), async (req, res) => {
 
 // GET endpoint to download subtitle file
 app.get('/api/download/:filename', (req, res) => {
-  const filePath = path.join(SUBTITLE_DIR, req.params.filename);
+  // Prevent path traversal: filename must be a plain basename with no directory components
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(SUBTITLE_DIR, filename);
+
+  // Ensure the resolved path is strictly inside SUBTITLE_DIR
+  if (!filePath.startsWith(SUBTITLE_DIR + path.sep)) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'Subtitle file not found' });
