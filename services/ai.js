@@ -54,7 +54,11 @@ async function processMessage(userMessage, conversationHistory = []) {
     messages,
   });
 
-  const text = response.content[0].text.trim();
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock) {
+    return { action: 'chat', reply: '申し訳ありません、応答を生成できませんでした。' };
+  }
+  const text = textBlock.text.trim();
 
   try {
     const parsed = JSON.parse(text);

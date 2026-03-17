@@ -14,6 +14,7 @@ function createSlackApp() {
   // Handle direct messages
   slackApp.message(async ({ message, say }) => {
     if (message.subtype) return; // Ignore bot messages, edits, etc.
+    if (!message.text) return; // Ignore file uploads, reactions, etc.
 
     try {
       const userId = message.user;
@@ -47,6 +48,10 @@ function createSlackApp() {
     await ack();
     try {
       const userId = command.user_id;
+      if (!command.text) {
+        await respond('はい、何かご用ですか？予定の確認、タスク管理、なんでもお聞きください！');
+        return;
+      }
       const reply = await handleMessage(userId, command.text);
       await respond(reply);
     } catch (error) {
