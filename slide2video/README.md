@@ -87,6 +87,8 @@ python3 make_video.py slides.pdf out.mp4 --dry-run
 | `--chars-per-sec N` | 45 | 1秒あたりの読み文字数(表示時間の傾き) |
 | `--min-dur` / `--max-dur` | 4.0 / 12.0 | 表示時間の下限/上限(秒) |
 | `--fixed PAGE=SEC` | なし | 特定ページの表示時間を固定。複数指定可 |
+| `--durations-file FILE` | なし | 全ページの表示時間を直接指定(各行 `ページ番号<TAB>秒`)。指定時は文字数計算・`--fixed`を使わない |
+| `--audio FILE` | なし | 指定音声を多重化(AAC 192kbps)。動画尺との差が0.1s超なら警告して`-shortest`で揃える |
 | `--xfade SEC` | 0.5 | スライド間クロスフェード秒数 |
 | `--transition NAME` | fade | xfadeのtransition名(wipeleft等も指定可) |
 | `--fadein` / `--fadeout` | 0.8 / 1.0 | 冒頭/末尾フェード秒数(0で無効) |
@@ -104,6 +106,95 @@ python3 make_video.py slides.pdf out.mp4 --dry-run
 | `durations.txt` | ページ番号・文字数・表示秒数の一覧(タブ区切り) |
 | `filter_complex.txt` | 生成されたffmpegフィルタグラフ |
 | `ffmpeg_cmd.txt` | 実行したffmpegコマンド全文 |
+
+## ナレーション+BGM付き動画 (narrate.py)
+
+台本JSONとPDFから、Open JTalkによるナレーションと自前合成BGM付きの
+スライドショーMP4を一括生成します。表示時間は「文字数」ではなく
+「ナレーションの実長」から自動設計されます(ナレーション駆動)。
+
+### 追加の必要要件(Open JTalk)
+
+```bash
+# Debian / Ubuntu
+sudo apt install open-jtalk open-jtalk-mecab-naist-jdic hts-voice-nitech-jp-atr503-m001
+```
+
+既定パス(オプションで変更可):
+
+- 辞書: `/var/lib/mecab/dic/open-jtalk/naist-jdic`
+- 音声: `/usr/share/hts-voice/nitech-jp-atr503-m001/nitech_jp_atr503_m001.htsvoice`
+
+### 台本JSONの形式
+
+```json
+{
+  "pages": [
+    {"page": 1, "text": "1ページ目の読み上げテキスト。"},
+    {"page": 2, "text": "2ページ目の読み上げテキスト。"}
+  ]
+}
+```
+
+ページ番号は1..Nの連番で、PDFのページ数と一致させます。
+読み間違いを避けるため、固有名詞や英字はカナで書くのがおすすめです
+(例: 「生成AI」→「生成エーアイ」)。
+
+### 使い方
+
+```bash
+# 基本(ナレーション+BGM)
+python3 narrate.py script.json slides.pdf out.mp4 --workdir ./work
+
+# BGMなし・話速1.0
+python3 narrate.py script.json slides.pdf out.mp4 --no-bgm --rate 1.0
+
+# 音声(mix.wav)とdurationsファイルの生成までで止める(動画は後で)
+python3 narrate.py script.json slides.pdf out.mp4 --workdir ./work --audio-only
+python3 make_video.py slides.pdf out.mp4 --workdir ./work/video \
+  --durations-file ./work/narration_durations.txt --audio ./work/mix.wav
+```
+
+### 処理内容
+
+1. Open JTalk でページごとにTTS(モノラル/指定サンプルレート)。
+   出力の前後に入る無音(0.4〜0.7s程度)は自動トリム(`--no-trim`で無効化)
+2. 各ナレーション実長 `narr` から表示時間を計算
+   - 通常ページ: `dur = max(narr + lead + tail + xfade, min_dur)`
+   - 最終ページ: `dur = max(narr + lead + final_tail, final_min)`
+3. ナレーショントラックを組み立て(各スライドの表示開始 `lead` 秒後に
+   ナレーションが始まるよう、映像のxfadeタイムラインとサンプル単位で同期)
+4. BGMを標準ライブラリで自前合成(キーC、Cmaj7→Am7→Fmaj7→G7のパッド、
+   1コード8秒、権利フリー)→ ffmpegで lowpass 2kHz+軽いエコー+末尾フェードアウト
+5. ナレーションを loudnorm(2パス、既定 -15 LUFS)で正規化し、
+   BGM(既定 volume 0.112 ≒ ナレーション比約-20dB)と amix →
+   alimiter でピーク-1dB以内 → 48kHzステレオ
+6. `make_video.py --durations-file --audio` を呼び出してMP4化
+
+### narrate.py の主なオプション
+
+| オプション | 既定値 | 説明 |
+|---|---|---|
+| `--rate` | 0.95 | 話速(open_jtalk -r) |
+| `--lead` | 0.7 | スライド表示開始からナレーション開始までの間(秒) |
+| `--tail` | 0.9 | ナレーション後の間(秒) |
+| `--min-dur` | 4.5 | 通常ページの最低表示秒 |
+| `--final-tail` / `--final-min` | 2.3 / 5.0 | 最終ページの余韻・最低表示秒 |
+| `--xfade` | 0.5 | 映像クロスフェード秒(make_video.pyへも渡る) |
+| `--no-bgm` | off | BGMを付けない |
+| `--bgm-volume` | 0.12 | BGM音量係数(0.10〜0.15目安) |
+| `--loudnorm-i` | -15.0 | ナレーションのラウドネス目標(LUFS) |
+| `--no-trim` | off | TTS出力の前後無音をトリムしない |
+| `--dic` / `--voice` | 上記既定パス | Open JTalkの辞書/声モデル |
+| `--audio-only` | off | 音声とdurationsファイルの生成までで止める |
+| `--video-args "..."` | なし | make_video.pyへの追加引数(例: `"--crf 18"`) |
+
+### ライセンス注記
+
+- Open JTalk・付属辞書は修正BSDライセンスです。
+- nitech-jp-atr503-m001 音声モデルは CC BY 3.0(名古屋工業大学)です。
+  生成音声を含む動画を公開する場合はクレジット表記を推奨します。
+- BGMは本ツールがその場で数値合成するオリジナル波形のため、権利フリーです。
 
 ## 注意点
 

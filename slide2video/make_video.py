@@ -97,6 +97,27 @@ def page_char_count(pdf: Path, page: int) -> int:
     return len("".join(out.split()))
 
 
+def read_durations_file(path, n_pages):
+    """'page<TAB>秒' 形式のファイルを読み、全ページ分の表示時間リストを返す。"""
+    durs = {}
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = re.split(r"[\t, ]+", line)
+        if len(parts) < 2:
+            continue
+        try:
+            pg, d = int(parts[0]), float(parts[1])
+        except ValueError:
+            continue  # ヘッダ行など
+        durs[pg] = d
+    missing = [p for p in range(1, n_pages + 1) if p not in durs]
+    if missing:
+        die(f"--durations-file にページ {missing} の表示時間がありません: {path}")
+    return [round(durs[p], 3) for p in range(1, n_pages + 1)]
+
+
 def parse_fixed(values):
     fixed = {}
     for v in values or []:
@@ -160,6 +181,12 @@ def main():
     p.add_argument("--max-dur", type=float, default=12.0, help="表示時間の上限(秒)")
     p.add_argument("--fixed", action="append", metavar="PAGE=SEC",
                    help="特定ページの表示時間を固定(例: --fixed 1=6.0)。複数指定可")
+    p.add_argument("--durations-file", metavar="FILE", default=None,
+                   help="全ページの表示時間を直接指定するファイル(各行 'ページ番号<TAB>秒'。"
+                        "#行・非数値行は無視)。指定時は文字数ベースの自動計算と--fixedを使わない")
+    p.add_argument("--audio", metavar="FILE", default=None,
+                   help="指定音声をそのまま多重化する(AAC 192kbps)。"
+                        "動画尺と音声尺の差が0.1s超なら警告して-shortestで揃える")
     p.add_argument("--xfade", type=float, default=0.5, help="スライド間クロスフェード秒数")
     p.add_argument("--transition", default="fade", help="xfadeのtransition名")
     p.add_argument("--fadein", type=float, default=0.8, help="冒頭フェードイン秒数(0で無効)")
@@ -229,36 +256,46 @@ def main():
     info(f"解像度統一完了: {len(scaled_pages)}枚すべて {args.width}x{args.height}")
 
     # --- 3. 表示時間計算 ---
-    fixed = parse_fixed(args.fixed)
-    unknown = [pg for pg in fixed if not (1 <= pg <= n_pages)]
-    if unknown:
-        die(f"--fixed のページ番号が範囲外です: {unknown} (1〜{n_pages})")
-    info("pdftotext で文字数を取得し表示時間を計算中...")
-    durations, char_counts = [], []
-    for pg in range(1, n_pages + 1):
-        chars = page_char_count(pdf, pg)
-        char_counts.append(chars)
-        if pg in fixed:
-            d = float(fixed[pg])
-        else:
-            d = args.base + chars / args.chars_per_sec
-            d = min(max(d, args.min_dur), args.max_dur)
-        durations.append(round(d, 3))
+    if args.durations_file:
+        if args.fixed:
+            info("警告: --durations-file 指定時は --fixed を無視します")
+        durations = read_durations_file(args.durations_file, n_pages)
+        char_counts = None
+        fixed = {}
+        info(f"表示時間を --durations-file から読み込みました: {args.durations_file}")
+    else:
+        fixed = parse_fixed(args.fixed)
+        unknown = [pg for pg in fixed if not (1 <= pg <= n_pages)]
+        if unknown:
+            die(f"--fixed のページ番号が範囲外です: {unknown} (1〜{n_pages})")
+        info("pdftotext で文字数を取得し表示時間を計算中...")
+        durations, char_counts = [], []
+        for pg in range(1, n_pages + 1):
+            chars = page_char_count(pdf, pg)
+            char_counts.append(chars)
+            if pg in fixed:
+                d = float(fixed[pg])
+            else:
+                d = args.base + chars / args.chars_per_sec
+                d = min(max(d, args.min_dur), args.max_dur)
+            durations.append(round(d, 3))
     bad = [i + 1 for i, d in enumerate(durations) if n_pages > 1 and d <= args.xfade]
     if bad:
         die(f"表示時間がクロスフェード({args.xfade}s)以下のページがあります: {bad}")
 
     total = round(sum(durations) - args.xfade * (n_pages - 1), 3)
     info("表示時間一覧 (ページ: 文字数 -> 秒):")
-    for pg, (c, d) in enumerate(zip(char_counts, durations), start=1):
+    for pg, d in enumerate(durations, start=1):
+        c = f"{char_counts[pg - 1]:>4}文字" if char_counts else "  指定値"
         mark = " [固定]" if pg in fixed else ""
-        info(f"  page {pg:>3}: {c:>4}文字 -> {d:6.3f}s{mark}")
+        info(f"  page {pg:>3}: {c} -> {d:6.3f}s{mark}")
     info(f"合計表示時間 {sum(durations):.3f}s - クロスフェード {args.xfade}s x {n_pages - 1}回 "
          f"= 動画尺 {total:.3f}s")
     dur_file = workdir / "durations.txt"
     with open(dur_file, "w", encoding="utf-8") as f:
         f.write("page\tchars\tduration_sec\n")
-        for pg, (c, d) in enumerate(zip(char_counts, durations), start=1):
+        for pg, d in enumerate(durations, start=1):
+            c = char_counts[pg - 1] if char_counts else "-"
             f.write(f"{pg}\t{c}\t{d:.3f}\n")
         f.write(f"# total_video_sec\t{total:.3f}\n")
 
@@ -267,19 +304,35 @@ def main():
     filter_script.write_text(build_filter_script(durations, args, total), encoding="utf-8")
     info(f"filter_complex を生成: {filter_script}")
 
+    audio_path = Path(args.audio).resolve() if args.audio else None
+    if audio_path and not audio_path.is_file():
+        die(f"--audio のファイルが見つかりません: {audio_path}")
+
     cmd = ["ffmpeg", "-y", "-hide_banner"]
     for i, (img, d) in enumerate(zip(scaled_pages, durations)):
         t = d + (PAD_TAIL if i < n_pages - 1 else 0.0)  # 最終入力以外は保険を足す
         cmd += ["-loop", "1", "-t", f"{t:.3f}", "-framerate", args.fps, "-i", img]
+    if audio_path:
+        cmd += ["-i", audio_path]  # 入力index = n_pages
     cmd += [
         "-filter_complex_script", filter_script,
         "-map", "[vout]",
         "-c:v", "libx264", "-preset", args.preset, "-crf", args.crf,
         "-pix_fmt", "yuv420p", "-r", args.fps,
         "-movflags", "+faststart",
-        "-an",
-        output,
     ]
+    if audio_path:
+        cmd += ["-map", f"{n_pages}:a", "-c:a", "aac", "-b:a", "192k"]
+        if shutil.which("ffprobe"):
+            adur = float(run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                              "-of", "csv=p=0", audio_path], capture=True).strip())
+            info(f"音声尺 {adur:.3f}s / 動画尺 {total:.3f}s (差 {adur - total:+.3f}s)")
+            if abs(adur - total) > 0.1:
+                info("警告: 音声尺と動画尺の差が0.1sを超えています。-shortest で短い方に揃えます")
+                cmd += ["-shortest"]
+    else:
+        cmd += ["-an"]
+    cmd += [output]
     (workdir / "ffmpeg_cmd.txt").write_text(
         " ".join(str(c) for c in cmd) + "\n", encoding="utf-8")
 
@@ -296,9 +349,10 @@ def main():
     info(f"完了: {output} ({size_mb:.1f} MB, 想定尺 {total:.3f}s)")
 
     if shutil.which("ffprobe"):
-        probe = run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+        probe = run(["ffprobe", "-v", "error",
                      "-show_entries",
-                     "stream=codec_name,width,height,avg_frame_rate:format=duration",
+                     "stream=codec_type,codec_name,width,height,avg_frame_rate,"
+                     "sample_rate,channels:format=duration",
                      "-of", "default=noprint_wrappers=1", output], capture=True)
         info("ffprobe結果:\n" + probe.strip())
 
