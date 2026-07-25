@@ -1,0 +1,1567 @@
+<title>計算でできた光 — 画像を一枚も使わない観測記録</title>
+
+<div id="opus">
+
+<style>
+/* ──────────────────────────────────────────────────────────────
+   計算でできた光 / An Observatory of Computed Light
+   単一HTML・外部ファイルゼロ・画像ゼロ
+   ────────────────────────────────────────────────────────────── */
+
+html, :root[data-theme="light"], :root[data-theme="dark"] { background:#05070f; color-scheme: dark; }
+body { background:#05070f; margin:0; }
+
+#opus {
+  --ink:      #05070f;
+  --ink-2:    #0a0e1c;
+  --ink-3:    #10152a;
+  --line:     #1b2238;
+  --line-hi:  #2b3454;
+  --paper:    #e9eaf3;
+  --muted:    #7b83a1;
+  --muted-2:  #545c78;
+  --brass:    #c9a227;
+  --brass-hi: #f0d98a;
+  --brass-dim:#7a611a;
+  --indigo:   #6c7ce0;
+  --teal:     #4fb8d6;
+
+  --serif: "Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Source Han Serif JP","Songti SC","MS PMincho",serif;
+  --sans:  "Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic",YuGothic,"Noto Sans JP","Source Han Sans JP","Meiryo",system-ui,sans-serif;
+  --mono:  ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono","DejaVu Sans Mono",monospace;
+
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.9;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+#opus *, #opus *::before, #opus *::after { box-sizing: border-box; }
+#opus p, #opus h1, #opus h2, #opus h3, #opus figure, #opus ul { margin: 0; }
+#opus ul { padding: 0; list-style: none; }
+#opus canvas { display: block; }
+#opus :focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+
+/* ── 計器バー ─────────────────────────────────────────────── */
+.rig {
+  position: fixed; inset: 0 0 auto 0; z-index: 60;
+  display: flex; align-items: center; gap: 0;
+  height: 30px; padding: 0 clamp(10px, 3vw, 26px);
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em;
+  color: var(--muted);
+  background: rgba(5,7,15,.78);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  font-variant-numeric: tabular-nums;
+}
+.rig__live { display: flex; align-items: center; gap: 7px; color: var(--brass); white-space: nowrap; }
+.rig__dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--brass);
+  box-shadow: 0 0 0 0 rgba(201,162,39,.55); animation: pulse 2.4s ease-out infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(201,162,39,.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(201,162,39,0); }
+  100% { box-shadow: 0 0 0 0 rgba(201,162,39,0); }
+}
+.rig__now { flex: 1; text-align: center; color: var(--muted-2); overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis; padding: 0 10px; }
+.rig__read { display: flex; gap: 16px; white-space: nowrap; }
+.rig__read b { color: var(--paper); font-weight: 400; }
+@media (max-width: 700px) { .rig__now { display: none; } .rig__read { gap: 12px; margin-left: auto; } }
+
+/* ── 版面 ─────────────────────────────────────────────────── */
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 60px); }
+#opus section { scroll-margin-top: 34px; }
+.prose { max-width: 31em; font-size: 15px; line-height: 2.15; color: #bcc2d6; }
+.prose strong { color: var(--paper); font-weight: 500; }
+
+.eyebrow {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .22em;
+  color: var(--brass); text-transform: uppercase;
+}
+.eyebrow--muted { color: var(--muted-2); }
+
+/* ── 序 ───────────────────────────────────────────────────── */
+.overture { position: relative; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; }
+.overture canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.overture::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 22% 55%, rgba(5,7,15,.86) 0%, rgba(5,7,15,.34) 46%, rgba(5,7,15,0) 72%),
+    linear-gradient(to top, rgba(5,7,15,.95) 0%, rgba(5,7,15,0) 34%);
+}
+.overture__type {
+  position: absolute; inset: auto 0 0 0; z-index: 2;
+  padding-bottom: clamp(52px, 11vh, 118px);
+}
+.overture__type .inner { max-width: 1160px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 60px); }
+.overture h1 {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(38px, 7.4vw, 92px); line-height: 1.28; letter-spacing: .02em;
+  margin: 22px 0 26px; text-wrap: balance;
+  text-shadow: 0 2px 40px rgba(5,7,15,.9);
+}
+.overture h1 .dim { color: var(--muted); }
+.overture h1 .lit {
+  color: var(--brass-hi);
+  text-shadow: 0 0 34px rgba(240,217,138,.34), 0 2px 40px rgba(5,7,15,.9);
+}
+.cue {
+  position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 3;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .3em; color: var(--muted-2);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.cue i { display: block; width: 1px; height: 26px; background: linear-gradient(var(--muted-2), transparent);
+         animation: drop 2.6s ease-in-out infinite; }
+@keyframes drop { 0%,100% { transform: scaleY(.4); opacity: .3; transform-origin: top; }
+                  50% { transform: scaleY(1); opacity: 1; transform-origin: top; } }
+
+/* ── 証拠 ─────────────────────────────────────────────────── */
+.proof { padding: clamp(80px, 13vh, 150px) 0 clamp(66px, 10vh, 116px); border-bottom: 1px solid var(--line); }
+.proof__lead { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: clamp(26px, 5vw, 70px); align-items: end; }
+@media (max-width: 860px) { .proof__lead { grid-template-columns: 1fr; align-items: start; gap: 26px; } }
+.proof h2 {
+  font-family: var(--serif); font-weight: 400; font-size: clamp(27px, 4vw, 46px);
+  line-height: 1.5; letter-spacing: .02em; margin-top: 16px; text-wrap: balance;
+}
+.ledger { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px;
+          margin-top: clamp(40px, 6vw, 66px); background: var(--line); border: 1px solid var(--line); }
+@media (max-width: 780px) { .ledger { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.cell { background: var(--ink); padding: 22px clamp(14px, 2vw, 24px) 20px; }
+.cell dt { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--muted-2); }
+.cell dd { margin: 12px 0 0; font-family: var(--mono); font-variant-numeric: tabular-nums;
+           font-size: clamp(26px, 4.4vw, 40px); line-height: 1; color: var(--paper); }
+.cell dd small { font-size: 12px; color: var(--muted); margin-left: 5px; letter-spacing: .06em; }
+.cell--zero dd { color: var(--brass-hi); }
+
+/* ── 図版 ─────────────────────────────────────────────────── */
+.plate { border-bottom: 1px solid var(--line); padding: clamp(70px, 11vh, 128px) 0 0; }
+.plate__head { display: flex; align-items: baseline; gap: clamp(16px, 3vw, 30px); margin-bottom: clamp(26px, 4vw, 40px); }
+.plate__num {
+  font-family: var(--serif); font-size: clamp(38px, 6vw, 62px); line-height: .9;
+  color: var(--brass); flex: none;
+}
+.plate__title { flex: 1; min-width: 0; }
+.plate__title h2 {
+  font-family: var(--serif); font-weight: 400; font-size: clamp(24px, 3.4vw, 36px);
+  letter-spacing: .12em; line-height: 1.3;
+}
+.plate__title .sub { font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; color: var(--muted-2); margin-top: 8px; }
+
+.stage { position: relative; background: var(--ink-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; }
+.stage canvas { width: 100%; height: clamp(400px, 66vh, 700px); }
+.stage--tall canvas { height: clamp(440px, 76vh, 780px); }
+.stage__hint {
+  position: absolute; left: 14px; bottom: 12px; z-index: 2; pointer-events: none;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--muted);
+  background: rgba(5,7,15,.6); border: 1px solid var(--line); padding: 5px 10px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.stage--sand { background: #07050e; }
+.stage--sand canvas {
+  background: radial-gradient(58% 74% at 50% 46%, #191033 0%, #0c0a1c 48%, #06050d 100%);
+}
+
+.plate__foot {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: clamp(24px, 4vw, 56px); align-items: start;
+  padding: clamp(26px, 4vw, 40px) 0 clamp(58px, 8vh, 92px);
+}
+@media (max-width: 860px) { .plate__foot { grid-template-columns: 1fr; gap: 22px; } }
+.formula {
+  font-family: var(--mono); font-size: 12.5px; line-height: 2.1; color: var(--brass-hi);
+  background: linear-gradient(180deg, var(--ink-2), #080c18);
+  border: 1px solid var(--line); border-left: 2px solid var(--brass-dim);
+  padding: 16px 18px; overflow-x: auto; white-space: nowrap;
+}
+.formula .k { color: var(--muted); }
+.formula .cap { display: block; color: var(--muted-2); font-size: 10px; letter-spacing: .16em;
+                white-space: normal; margin-top: 10px; line-height: 1.7; }
+
+/* ── 操作子 ───────────────────────────────────────────────── */
+.plate__foot--k { padding-bottom: 22px; }
+.knobs { display: flex; flex-wrap: wrap; gap: 20px 30px; align-items: center;
+         padding-bottom: clamp(58px, 8vh, 92px); }
+.knob { display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px;
+        letter-spacing: .1em; color: var(--muted); }
+.knob b { color: var(--brass-hi); font-weight: 400; min-width: 3.4em; font-variant-numeric: tabular-nums; }
+.knob input[type=range] { -webkit-appearance: none; appearance: none; width: clamp(110px, 20vw, 190px);
+  height: 20px; background: transparent; cursor: ew-resize; }
+.knob input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--line-hi); }
+.knob input[type=range]::-moz-range-track { height: 1px; background: var(--line-hi); }
+.knob input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px;
+  margin-top: -5px; background: var(--brass); border: 0; border-radius: 50%; box-shadow: 0 0 12px rgba(201,162,39,.5); }
+.knob input[type=range]::-moz-range-thumb { width: 11px; height: 11px; background: var(--brass);
+  border: 0; border-radius: 50%; box-shadow: 0 0 12px rgba(201,162,39,.5); }
+.btn {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--brass-hi);
+  background: transparent; border: 1px solid var(--brass-dim); padding: 9px 18px; cursor: pointer;
+  transition: background .22s ease, color .22s ease, border-color .22s ease;
+}
+.btn:hover { background: rgba(201,162,39,.12); border-color: var(--brass); }
+
+/* ── 解剖 ─────────────────────────────────────────────────── */
+.dissect { padding: clamp(80px, 13vh, 150px) 0; border-bottom: 1px solid var(--line); }
+.tally { margin: clamp(34px, 5vw, 56px) 0 clamp(46px, 7vw, 74px); }
+.tally__label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; color: var(--muted-2); }
+.tally__n {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: clamp(34px, 9.2vw, 106px); line-height: 1.06; letter-spacing: -.015em;
+  color: var(--brass-hi); text-shadow: 0 0 46px rgba(240,217,138,.2); margin-top: 10px;
+  word-break: break-all;
+}
+.bars { display: grid; gap: 15px; }
+.bar { display: grid; grid-template-columns: 5.2em minmax(0,1fr) 11em; gap: 14px; align-items: center;
+       font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
+.bar[data-empty="1"] { display: none; }
+@media (max-width: 620px) { .bar { grid-template-columns: 4.4em minmax(0,1fr); }
+                            .bar .bar__v { grid-column: 2; text-align: left; } }
+.bar__k { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar__t { position: relative; height: 7px; background: var(--ink-3); overflow: hidden; }
+.bar__f { position: absolute; inset: 0 auto 0 0; width: 0;
+          background: linear-gradient(90deg, var(--brass-dim), var(--brass) 62%, var(--brass-hi));
+          transition: width .6s cubic-bezier(.2,.7,.3,1); }
+.bar__v { color: var(--paper); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar.is-live .bar__k { color: var(--brass); }
+.device { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: clamp(38px, 5vw, 54px);
+          font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--muted-2); }
+.device b { color: var(--paper); font-weight: 400; }
+
+/* ── 終 ───────────────────────────────────────────────────── */
+.coda { padding: clamp(64px, 9vh, 108px) 0 0; }
+.coda .stage { border: 0; background: transparent; }
+.coda canvas { height: clamp(320px, 54vh, 520px); }
+.coda__caption { text-align: center; padding: clamp(30px, 5vw, 52px) 0 clamp(80px, 12vh, 140px); }
+.coda__caption p { font-family: var(--serif); font-size: clamp(15px, 2.2vw, 20px); line-height: 2.1;
+                   color: var(--muted); letter-spacing: .06em; }
+
+.colophon { border-top: 1px solid var(--line); padding: clamp(46px, 7vh, 78px) 0 clamp(56px, 8vh, 96px); }
+.colophon__grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: clamp(22px, 4vw, 56px); }
+@media (max-width: 780px) { .colophon__grid { grid-template-columns: 1fr; } }
+.colophon p { font-size: 13.5px; line-height: 2.1; color: var(--muted); max-width: 32em; }
+.colophon .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--muted-2); line-height: 2.4; }
+.colophon .mono b { color: var(--paper); font-weight: 400; }
+
+/* ── 出現 ─────────────────────────────────────────────────── */
+.rise { opacity: 0; transform: translateY(16px); transition: opacity .9s ease, transform .9s cubic-bezier(.2,.7,.3,1); }
+.rise.is-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .rise { opacity: 1; transform: none; transition: none; }
+  .rig__dot { animation: none; }
+  .cue i { animation: none; }
+}
+</style>
+
+
+<!-- ═══ 計器バー ═══════════════════════════════════════════ -->
+<div class="rig" role="status" aria-live="off">
+  <span class="rig__live"><i class="rig__dot"></i>計算中</span>
+  <span class="rig__now" id="rigNow">序 — 流れ</span>
+  <span class="rig__read">
+    <span>更新 <b id="rigOps">0</b>/秒</span>
+    <span><b id="rigFps">—</b> fps</span>
+  </span>
+</div>
+
+
+<!-- ═══ 序 ═════════════════════════════════════════════════ -->
+<section class="overture" id="sec-overture">
+  <canvas data-engine="flow" aria-label="流れ場に沿って動く数万個の粒子のアニメーション"></canvas>
+  <div class="overture__type">
+    <div class="inner">
+      <p class="eyebrow">観測記録 ／ 画像 0枚・外部ファイル 0件</p>
+      <h1><span class="dim">この光は、いま</span><br>あなたの端末で<br><span class="lit">計算されている。</span></h1>
+      <p class="prose">
+        ここから先に出てくる絵は、どこかで作られた画像を読み込んだものではありません。
+        あるのは数式と、それを書いたコードだけ。
+        <strong>ページを開き直せば、二度と同じ絵は出てきません。</strong>
+      </p>
+    </div>
+  </div>
+  <div class="cue" aria-hidden="true"><i></i>SCROLL</div>
+</section>
+
+
+<!-- ═══ 証拠 ═══════════════════════════════════════════════ -->
+<section class="proof">
+  <div class="wrap">
+    <div class="proof__lead rise">
+      <div>
+        <p class="eyebrow eyebrow--muted">証拠</p>
+        <h2>絵を用意したのではなく、<br>絵の<span style="color:var(--brass-hi)">作り方</span>を書いた。</h2>
+      </div>
+      <p class="prose">
+        写真も、イラストも、動画も、フォントも、外部の部品も、一つも使っていません。
+        このページ全体が、たった一つのテキストファイルです。
+        下の数字は、たったいま、あなたのブラウザ自身が数えたものです。
+      </p>
+    </div>
+
+    <dl class="ledger rise">
+      <div class="cell cell--zero"><dt>読み込んだ画像</dt><dd id="stImg">0<small>枚</small></dd></div>
+      <div class="cell cell--zero"><dt>外部ファイル・ライブラリ</dt><dd id="stExt">0<small>件</small></dd></div>
+      <div class="cell"><dt>ソース全体の大きさ</dt><dd id="stSize">—<small>KB</small></dd></div>
+      <div class="cell"><dt>書かれた行数</dt><dd id="stLines">—<small>行</small></dd></div>
+    </dl>
+  </div>
+</section>
+
+
+<!-- ═══ 図版一 生命 ═══════════════════════════════════════ -->
+<section class="plate" id="sec-life" data-title="図版一 — 生命">
+  <div class="wrap">
+    <div class="plate__head rise">
+      <div class="plate__num">一</div>
+      <div class="plate__title">
+        <h2>生命</h2>
+        <p class="sub">REACTION–DIFFUSION ／ 反応拡散系</p>
+      </div>
+    </div>
+  </div>
+  <div class="stage">
+    <canvas data-engine="life" aria-label="反応拡散方程式が生む、豹紋や珊瑚のような有機的な模様"></canvas>
+    <p class="stage__hint">指・カーソルでなぞると、そこから育つ</p>
+  </div>
+  <div class="wrap">
+    <div class="plate__foot">
+      <p class="prose">
+        二種類の薬品が、混ざりながら互いを打ち消し合う。ルールはこれだけです。
+        にもかかわらず、豹の斑点も、珊瑚の襞も、細胞が分かれていく様子も、勝手に立ち上がってきます。
+        <strong>どこにも「豹を描け」とは書いていません。</strong>
+        画面の左右で薬品の量をわずかに変えてあるので、場所ごとに違う生き物の模様が同時に育ちます。
+      </p>
+      <div class="formula">
+        ∂a/∂t = D<span class="k">a</span>∇²a − ab² + f(1−a)<br>
+        ∂b/∂t = D<span class="k">b</span>∇²b + ab² − (k+f)b
+        <span class="cap">アラン・チューリングが1952年に予言した式。動物の模様がなぜできるのかを、彼はこの2行で説明した。</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 図版二 混沌 ═══════════════════════════════════════ -->
+<section class="plate" id="sec-chaos" data-title="図版二 — 混沌">
+  <div class="wrap">
+    <div class="plate__head rise">
+      <div class="plate__num">二</div>
+      <div class="plate__title">
+        <h2>混沌</h2>
+        <p class="sub">STRANGE ATTRACTOR ／ ストレンジアトラクタ</p>
+      </div>
+    </div>
+  </div>
+  <div class="stage stage--tall">
+    <canvas data-engine="chaos" aria-label="ドジョン・アトラクタが描く、無数の点による発光する構造"></canvas>
+    <p class="stage__hint" id="chaosHint">毎秒 — 個の点を置いている</p>
+  </div>
+  <div class="wrap">
+    <div class="plate__foot">
+      <p class="prose">
+        一つの点を、たった四つの数字にしたがって、次々と別の場所へ飛ばしていく。
+        飛び先はでたらめに散らばるはずなのに、何百万回とくり返すうちに、なぜか形が浮かび上がってきます。
+        <strong>秩序は、外から与えたものではありません。</strong>
+        四つの数字をゆっくり変えているので、構造は絶えず姿を変え、同じ形には二度と戻りません。
+      </p>
+      <div class="formula">
+        x<span class="k">n+1</span> = sin(a·y<span class="k">n</span>) − cos(b·x<span class="k">n</span>)<br>
+        y<span class="k">n+1</span> = sin(c·x<span class="k">n</span>) − cos(d·y<span class="k">n</span>)
+        <span class="cap">ピーター・ドジョンのアトラクタ。たった2行の漸化式が、明るさの濃淡として蓄積されていく。</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 図版三 共鳴 ═══════════════════════════════════════ -->
+<section class="plate" id="sec-sand" data-title="図版三 — 共鳴">
+  <div class="wrap">
+    <div class="plate__head rise">
+      <div class="plate__num">三</div>
+      <div class="plate__title">
+        <h2>共鳴</h2>
+        <p class="sub">CHLADNI FIGURES ／ クラドニ図形</p>
+      </div>
+    </div>
+  </div>
+  <div class="stage stage--sand">
+    <canvas data-engine="sand" aria-label="振動する板の上で砂粒が節線に集まり、対称的な図形をつくる様子"></canvas>
+    <p class="stage__hint">砂 <span id="sandN">—</span> 粒を一つずつ計算中</p>
+  </div>
+  <div class="wrap">
+    <div class="plate__foot plate__foot--k">
+      <p class="prose">
+        金属板に砂をまいて、音を鳴らす。すると砂は、板の揺れていない場所にだけ集まって模様をつくります。
+        1787年に発見された現象を、ここでは砂粒<strong>一つひとつ</strong>の動きとして計算しています。
+        二つのつまみは、鳴らしている音の高さです。動かしてみてください。
+      </p>
+      <div class="formula">
+        sin(nπx)·sin(mπy) − sin(mπx)·sin(nπy) = 0
+        <span class="cap">この式が 0 になる線＝板が揺れていない線。砂はそこへ落ちていく。</span>
+      </div>
+    </div>
+    <div class="knobs rise">
+      <label class="knob">音 n <input type="range" id="sandN1" min="1" max="12" step="0.05" value="4"><b id="sandV1">4.00</b></label>
+      <label class="knob">音 m <input type="range" id="sandN2" min="1" max="12" step="0.05" value="7"><b id="sandV2">7.00</b></label>
+      <button class="btn" id="sandShake" type="button">板を叩く</button>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 図版四 成長 ═══════════════════════════════════════ -->
+<section class="plate" id="sec-tree" data-title="図版四 — 成長">
+  <div class="wrap">
+    <div class="plate__head rise">
+      <div class="plate__num">四</div>
+      <div class="plate__title">
+        <h2>成長</h2>
+        <p class="sub">RECURSIVE GROWTH ／ 再帰による生長</p>
+      </div>
+    </div>
+  </div>
+  <div class="stage">
+    <canvas data-engine="tree" aria-label="再帰的な規則によって枝分かれしながら育ち、風に揺れる木"></canvas>
+    <p class="stage__hint">クリック・タップでもう一度、別の木が育つ</p>
+  </div>
+  <div class="wrap">
+    <div class="plate__foot">
+      <p class="prose">
+        枝が分かれる角度と、細くなる比率。決めたのはそれだけです。
+        あとは「同じ規則を、枝の先でもう一度使う」をくり返しているだけ。
+        それでも育つたびに違う木になり、風が吹けば枝先ほど大きく揺れます。
+        <strong>自然の形の多くは、この「くり返し」でできています。</strong>
+      </p>
+      <div class="formula">
+        枝(長さ L, 深さ d) → 枝(L×0.72, d+1) を 2〜3 本<br>
+        <span class="k">角度 ±(20°〜38°)・毎回わずかに乱数を混ぜる</span>
+        <span class="cap">自分自身を呼び出す関数＝再帰。木も、血管も、川も、雷も、同じ形をしている。</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 図版五 立体 ═══════════════════════════════════════ -->
+<section class="plate" id="sec-solid" data-title="図版五 — 立体" hidden>
+  <div class="wrap">
+    <div class="plate__head rise">
+      <div class="plate__num">五</div>
+      <div class="plate__title">
+        <h2>立体</h2>
+        <p class="sub">RAYMARCHED FRACTAL ／ 距離関数による立体</p>
+      </div>
+    </div>
+  </div>
+  <div class="stage stage--tall">
+    <canvas data-engine="solid" aria-label="距離関数だけで表現された、無限に入れ子になる立体フラクタル"></canvas>
+    <p class="stage__hint">ドラッグ・スワイプで回せる</p>
+  </div>
+  <div class="wrap">
+    <div class="plate__foot">
+      <p class="prose">
+        この立体には、3Dモデルがありません。頂点も、面も、テクスチャも、一枚もありません。
+        あるのは「空間のある一点から、いちばん近い面までの距離」を答える関数がひとつだけ。
+        光はその距離を頼りに、手探りで空間を進んでいきます。
+        <strong>画面の一画素ごとに、光を最大90歩ずつ歩かせています。</strong>
+        しかも、この形は入れ子構造なので、寄っても寄っても細部が尽きません。
+      </p>
+      <div class="formula">
+        d(p) = max( d(p), (min(...)−1)/3<span class="k">ⁿ</span> ) を 4回<br>
+        <span class="k">for i in 0..90: p += rd · d(p)</span>
+        <span class="cap">メンガーのスポンジ。1926年に考案された、体積ゼロ・表面積無限の立体。</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 解剖 ═══════════════════════════════════════════════ -->
+<section class="dissect" id="sec-dissect" data-title="解剖 — 計測値">
+  <div class="wrap">
+    <div class="rise">
+      <p class="eyebrow eyebrow--muted">解剖</p>
+      <h2 style="font-family:var(--serif);font-weight:400;font-size:clamp(27px,4vw,46px);line-height:1.5;letter-spacing:.02em;margin-top:16px;max-width:18em">
+        いま、あなたの端末が<br>これだけ計算しました。
+      </h2>
+    </div>
+
+    <div class="tally rise">
+      <p class="tally__label">このページを開いてからの、粒子と格子の更新回数（実測・累計）</p>
+      <p class="tally__n" id="tallyN">0</p>
+    </div>
+
+    <div class="rise">
+      <p class="tally__label" style="margin-bottom:18px">図版ごとの 1秒あたり更新回数（実測・最高値）</p>
+      <div class="bars" id="bars"></div>
+    </div>
+
+    <div class="device rise">
+      <span>あなたの端末 ／ CPUコア <b id="devCores">—</b></span>
+      <span>画面 <b id="devScreen">—</b></span>
+      <span>画素密度 <b id="devDpr">—</b>×</span>
+      <span>描画速度 <b id="devFps">—</b> fps</span>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ 終 ═════════════════════════════════════════════════ -->
+<section class="coda" id="sec-coda" data-title="終 — 署名">
+  <div class="wrap">
+    <div class="stage">
+      <canvas data-engine="word" aria-label="無数の粒子が集まって文字を形づくり、また散っていくアニメーション"></canvas>
+    </div>
+  </div>
+  <div class="wrap coda__caption">
+    <p>文字を描いているのではありません。<br>粒が、文字の形の上に集まっているだけです。</p>
+  </div>
+</section>
+
+
+<footer class="colophon">
+  <div class="wrap colophon__grid">
+    <div>
+      <p class="eyebrow eyebrow--muted" style="margin-bottom:16px">奥付</p>
+      <p>
+        このページは、一つのHTMLファイルです。画像も、動画も、フォントも、ライブラリも読み込んでいません。
+        ここにある光はすべて、あなたの端末が、いま、その場で計算した結果です。
+      </p>
+      <p style="margin-top:18px">
+        信じられなければ、ページのソースを表示してみてください。&lt;img&gt; は一つもありません。
+      </p>
+    </div>
+    <div class="mono">
+      <div>題　　名　<b>計算でできた光</b></div>
+      <div>図　　版　<b>五点＋序・終</b></div>
+      <div>使用画像　<b>0</b></div>
+      <div>外部通信　<b>0</b></div>
+      <div>制　　作　<b>Claude（Anthropic の AI）</b></div>
+      <div>年　　記　<b>2026</b></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var ROOT = document.getElementById("opus");
+  var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var TAU = Math.PI * 2;
+
+  /* ── 小道具 ───────────────────────────────────────────── */
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function ramp(stops, n) {
+    n = n || 256;
+    var out = new Uint8Array(n * 4), i, k;
+    for (i = 0; i < n; i++) {
+      var t = i / (n - 1);
+      k = 0;
+      while (k < stops.length - 2 && t > stops[k + 1][0]) k++;
+      var s0 = stops[k], s1 = stops[k + 1];
+      var f = s1[0] > s0[0] ? (t - s0[0]) / (s1[0] - s0[0]) : 0;
+      f = clamp(f, 0, 1);
+      var c0 = s0[1], c1 = s1[1];
+      out[i * 4] = c0[0] + (c1[0] - c0[0]) * f;
+      out[i * 4 + 1] = c0[1] + (c1[1] - c0[1]) * f;
+      out[i * 4 + 2] = c0[2] + (c1[2] - c0[2]) * f;
+      out[i * 4 + 3] = (s0[2] === undefined ? 255 : s0[2] + ((s1[2] === undefined ? 255 : s1[2]) - s0[2]) * f);
+    }
+    return out;
+  }
+  function rngFrom(seed) {
+    var s = seed >>> 0 || 1;
+    return function () {
+      s ^= s << 13; s >>>= 0;
+      s ^= s >>> 17;
+      s ^= s << 5; s >>>= 0;
+      return s / 4294967296;
+    };
+  }
+  var nf = new Intl.NumberFormat("ja-JP");
+  function fmt(n) { return nf.format(Math.round(n)); }
+
+  /* ── 2次元シンプレックスノイズ ─────────────────────────── */
+  var GX = [1, -1, 1, -1, 1, -1, 0, 0], GY = [1, 1, -1, -1, 0, 0, 1, -1];
+  var PERM = new Uint8Array(512);
+  (function () {
+    var p = new Uint8Array(256), i, j, t, rnd = rngFrom(20260725);
+    for (i = 0; i < 256; i++) p[i] = i;
+    for (i = 255; i > 0; i--) { j = (rnd() * (i + 1)) | 0; t = p[i]; p[i] = p[j]; p[j] = t; }
+    for (i = 0; i < 512; i++) PERM[i] = p[i & 255];
+  })();
+  var F2 = 0.5 * (Math.sqrt(3) - 1), GG2 = (3 - Math.sqrt(3)) / 6;
+  function snoise(xin, yin) {
+    var n0 = 0, n1 = 0, n2 = 0;
+    var s = (xin + yin) * F2;
+    var i = Math.floor(xin + s), j = Math.floor(yin + s);
+    var t = (i + j) * GG2;
+    var x0 = xin - (i - t), y0 = yin - (j - t);
+    var i1, j1;
+    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+    var x1 = x0 - i1 + GG2, y1 = y0 - j1 + GG2;
+    var x2 = x0 - 1 + 2 * GG2, y2 = y0 - 1 + 2 * GG2;
+    var ii = i & 255, jj = j & 255;
+    var g0 = PERM[ii + PERM[jj]] & 7,
+        g1 = PERM[ii + i1 + PERM[jj + j1]] & 7,
+        g2 = PERM[ii + 1 + PERM[jj + 1]] & 7;
+    var t0 = 0.5 - x0 * x0 - y0 * y0;
+    if (t0 > 0) { t0 *= t0; n0 = t0 * t0 * (GX[g0] * x0 + GY[g0] * y0); }
+    var t1 = 0.5 - x1 * x1 - y1 * y1;
+    if (t1 > 0) { t1 *= t1; n1 = t1 * t1 * (GX[g1] * x1 + GY[g1] * y1); }
+    var t2 = 0.5 - x2 * x2 - y2 * y2;
+    if (t2 > 0) { t2 *= t2; n2 = t2 * t2 * (GX[g2] * x2 + GY[g2] * y2); }
+    return 70 * (n0 + n1 + n2);
+  }
+
+  /* ── 計測 ─────────────────────────────────────────────── */
+  var TOTAL = 0;          // 累計更新回数
+  var fpsAvg = 0;
+  var engines = [];
+
+  function makeEngine(cfg) {
+    cfg.ops = 0;          // 直近1秒の更新回数
+    cfg.opsWin = 0;
+    cfg.peak = 0;
+    cfg.active = false;
+    cfg.frames = 0;
+    cfg.ready = false;
+    engines.push(cfg);
+    return cfg;
+  }
+
+  /* ── canvas の実寸合わせ ──────────────────────────────── */
+  function fit(cv, maxDpr, maxPixels) {
+    var r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+    var dpr = Math.min(window.devicePixelRatio || 1, maxDpr || 2);
+    if (maxPixels) {
+      var raw = r.width * r.height * dpr * dpr;
+      if (raw > maxPixels) dpr *= Math.sqrt(maxPixels / raw);
+    }
+    var w = Math.max(1, Math.round(r.width * dpr));
+    var h = Math.max(1, Math.round(r.height * dpr));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; return true; }
+    return false;
+  }
+
+  function pointerPos(cv, ev) {
+    var r = cv.getBoundingClientRect();
+    var t = (ev.touches && ev.touches[0]) || ev;
+    return { x: (t.clientX - r.left) / r.width, y: (t.clientY - r.top) / r.height };
+  }
+
+  /* ══════════════════════════════════════════════════════
+     序 — 流れ場
+     ══════════════════════════════════════════════════════ */
+  function engineFlow(cv) {
+    var ctx = cv.getContext("2d", { alpha: false });
+    var W = 0, H = 0, N = 0, dpr = 1;
+    var x, y, px, py, life, bucket;
+    var COLS = ["rgba(78,150,214,0.30)", "rgba(108,124,224,0.28)", "rgba(79,184,214,0.26)",
+                "rgba(155,107,224,0.24)", "rgba(201,162,39,0.22)", "rgba(225,232,248,0.16)"];
+    var mouse = { x: -9, y: -9, on: false };
+    var t = 0;
+
+    function reseed(i, rndOnly) {
+      x[i] = Math.random() * W;
+      y[i] = Math.random() * H;
+      px[i] = x[i]; py[i] = y[i];
+      life[i] = 40 + Math.random() * 320;
+      if (!rndOnly) {
+        var v = snoise(x[i] * 0.0016, y[i] * 0.0016);
+        bucket[i] = clamp(((v + 1) * 0.5 * COLS.length) | 0, 0, COLS.length - 1);
+      }
+    }
+
+    function alloc() {
+      dpr = cv.width / cv.getBoundingClientRect().width || 1;
+      W = cv.width; H = cv.height;
+      var target = Math.round(clamp((W * H) / 230, 4000, 17000));
+      N = target;
+      x = new Float32Array(N); y = new Float32Array(N);
+      px = new Float32Array(N); py = new Float32Array(N);
+      life = new Float32Array(N); bucket = new Uint8Array(N);
+      for (var i = 0; i < N; i++) reseed(i);
+      ctx.fillStyle = "#05070f"; ctx.fillRect(0, 0, W, H);
+    }
+
+    cv.addEventListener("pointermove", function (e) {
+      var p = pointerPos(cv, e); mouse.x = p.x * W; mouse.y = p.y * H; mouse.on = true;
+    }, { passive: true });
+    cv.addEventListener("pointerleave", function () { mouse.on = false; }, { passive: true });
+
+    return makeEngine({
+      id: "flow", label: "序 — 流れ", short: "流れ", unit: "粒子",
+      resize: function () { if (fit(cv, 1.6, 3600000)) alloc(); },
+      frame: function (dt) {
+        if (!N) return;
+        t += dt * 0.00006;
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = "rgba(5,7,15,0.055)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineWidth = Math.max(0.7, 0.85 * dpr);
+        ctx.lineCap = "round";
+
+        var sp = 1.5 * dpr, mr = 130 * dpr, mr2 = mr * mr;
+        for (var b = 0; b < COLS.length; b++) {
+          ctx.beginPath();
+          for (var i = 0; i < N; i++) {
+            if (bucket[i] !== b) continue;
+            var a = (snoise(x[i] * 0.0012 + t, y[i] * 0.0012) * 1.9
+                   + snoise(x[i] * 0.0043, y[i] * 0.0043 + t * 2.1) * 0.7) * Math.PI * 1.6;
+            var vx = Math.cos(a) * sp, vy = Math.sin(a) * sp;
+            if (mouse.on) {
+              var dx = x[i] - mouse.x, dy = y[i] - mouse.y, d2 = dx * dx + dy * dy;
+              if (d2 < mr2 && d2 > 1) {
+                var f = (1 - d2 / mr2) * 5.2 / Math.sqrt(d2);
+                vx += dx * f * dpr; vy += dy * f * dpr;
+              }
+            }
+            px[i] = x[i]; py[i] = y[i];
+            x[i] += vx; y[i] += vy;
+            life[i] -= 1;
+            if (life[i] <= 0 || x[i] < -20 || x[i] > W + 20 || y[i] < -20 || y[i] > H + 20) {
+              reseed(i, true);
+              continue;
+            }
+            ctx.moveTo(px[i], py[i]);
+            ctx.lineTo(x[i], y[i]);
+          }
+          ctx.strokeStyle = COLS[b];
+          ctx.stroke();
+        }
+        ctx.globalCompositeOperation = "source-over";
+        this.ops += N;
+      },
+      still: 420
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     図版一 — 反応拡散（Gray–Scott）
+     ══════════════════════════════════════════════════════ */
+  function engineLife(cv) {
+    var ctx = cv.getContext("2d", { alpha: false });
+    var GW = 0, GH = 0, A, B, A2, B2, FEED, KILL;
+    var off = document.createElement("canvas"), octx = off.getContext("2d"), img;
+    var LUT = ramp([
+      [0.00, hex("#070b1a")], [0.22, hex("#12224a")], [0.44, hex("#1f5f8c")],
+      [0.66, hex("#33a8b8")], [0.84, hex("#8fe3df")], [1.00, hex("#f0f6f8")]
+    ]);
+    var painting = false, paint = null;
+
+    function seed() {
+      var i, j, k;
+      for (i = 0; i < GW * GH; i++) { A[i] = 1 - Math.random() * 0.02; B[i] = 0; }
+      for (k = 0; k < 260; k++) {
+        var cx = (Math.random() * GW) | 0, cy = (Math.random() * GH) | 0, r = 3 + (Math.random() * 4 | 0);
+        for (j = -r; j <= r; j++) for (i = -r; i <= r; i++) {
+          if (i * i + j * j > r * r) continue;
+          var xx = (cx + i + GW) % GW, yy = (cy + j + GH) % GH;
+          B[yy * GW + xx] = 1; A[yy * GW + xx] = 0.2;
+        }
+      }
+    }
+
+    function alloc() {
+      var r = cv.getBoundingClientRect();
+      /* 格子の総数に上限を設ける。縦長の画面でも計算量が跳ねないように、
+         縦横比から一辺ずつ割り出す。 */
+      var ar = r.width / Math.max(1, r.height);
+      var cells = clamp(r.width * r.height * 0.10, 18000, 62000);
+      GH = clamp(Math.round(Math.sqrt(cells / ar)), 80, 460);
+      GW = clamp(Math.round(GH * ar), 120, 520);
+      A = new Float32Array(GW * GH); B = new Float32Array(GW * GH);
+      A2 = new Float32Array(GW * GH); B2 = new Float32Array(GW * GH);
+      FEED = new Float32Array(GW * GH); KILL = new Float32Array(GW * GH);
+      for (var j = 0; j < GH; j++) for (var i = 0; i < GW; i++) {
+        var u = i / (GW - 1), v = j / (GH - 1);
+        /* 反応の「効きやすさ」を場所ごとに変える。u（横）に沿って
+           模様が生きる帯をなぞり、v（縦）で種類を振る。 */
+        FEED[j * GW + i] = 0.0220 + u * 0.0330;
+        KILL[j * GW + i] = 0.0552 + u * 0.0075 + v * 0.0062;
+      }
+      off.width = GW; off.height = GH;
+      img = octx.createImageData(GW, GH);
+      seed();
+    }
+
+    function step() {
+      var i, j, idx;
+      for (j = 0; j < GH; j++) {
+        var jm = ((j - 1 + GH) % GH) * GW, jp = ((j + 1) % GH) * GW, j0 = j * GW;
+        for (i = 0; i < GW; i++) {
+          var im = (i - 1 + GW) % GW, ip = (i + 1) % GW;
+          idx = j0 + i;
+          var a = A[idx], b = B[idx];
+          var la = (A[j0 + im] + A[j0 + ip] + A[jm + i] + A[jp + i]) * 0.2
+                 + (A[jm + im] + A[jm + ip] + A[jp + im] + A[jp + ip]) * 0.05 - a;
+          var lb = (B[j0 + im] + B[j0 + ip] + B[jm + i] + B[jp + i]) * 0.2
+                 + (B[jm + im] + B[jm + ip] + B[jp + im] + B[jp + ip]) * 0.05 - b;
+          var abb = a * b * b;
+          var f = FEED[idx], k = KILL[idx];
+          var na = a + (la - abb + f * (1 - a));
+          var nb = b + (lb * 0.5 + abb - (k + f) * b);
+          A2[idx] = na < 0 ? 0 : (na > 1 ? 1 : na);
+          B2[idx] = nb < 0 ? 0 : (nb > 1 ? 1 : nb);
+        }
+      }
+      var tmp = A; A = A2; A2 = tmp;
+      tmp = B; B = B2; B2 = tmp;
+    }
+
+    function brush(u, v) {
+      var cx = clamp(Math.round(u * GW), 0, GW - 1), cy = clamp(Math.round(v * GH), 0, GH - 1);
+      for (var j = -7; j <= 7; j++) for (var i = -7; i <= 7; i++) {
+        if (i * i + j * j > 52) continue;
+        var xx = (cx + i + GW) % GW, yy = (cy + j + GH) % GH;
+        B[yy * GW + xx] = 1; A[yy * GW + xx] = 0.25;
+      }
+    }
+
+    cv.style.touchAction = "pan-y";
+    cv.addEventListener("pointerdown", function (e) { painting = true; paint = pointerPos(cv, e); }, { passive: true });
+    cv.addEventListener("pointermove", function (e) {
+      if (e.pointerType === "mouse") { painting = true; paint = pointerPos(cv, e); }
+      else if (painting) { paint = pointerPos(cv, e); }
+    }, { passive: true });
+    cv.addEventListener("pointerup", function (e) { if (e.pointerType !== "mouse") painting = false; }, { passive: true });
+    cv.addEventListener("pointerleave", function () { painting = false; paint = null; }, { passive: true });
+
+    return makeEngine({
+      id: "life", label: "図版一 生命", short: "一 生命", unit: "格子",
+      resize: function () { if (fit(cv, 1)) alloc(); },
+      frame: function () {
+        if (!GW) return;
+        if (paint && painting) brush(paint.x, paint.y);
+        var iter = 5;
+        for (var s = 0; s < iter; s++) step();
+        this.ops += GW * GH * iter;
+
+        var d = img.data, n = GW * GH;
+        for (var i = 0; i < n; i++) {
+          var t = B[i] * 2.8;
+          var c = (t > 1 ? 255 : (t * 255) | 0) << 2;
+          d[i * 4] = LUT[c]; d[i * 4 + 1] = LUT[c + 1]; d[i * 4 + 2] = LUT[c + 2]; d[i * 4 + 3] = 255;
+        }
+        octx.putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(off, 0, 0, cv.width, cv.height);
+      },
+      still: 900
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     図版二 — ドジョン・アトラクタ
+     ══════════════════════════════════════════════════════ */
+  function engineChaos(cv) {
+    var ctx = cv.getContext("2d", { alpha: false });
+    var BW = 0, BH = 0, dens, off = document.createElement("canvas"),
+        octx = off.getContext("2d"), img;
+    var LUT = ramp([
+      [0.00, hex("#05070f")], [0.16, hex("#141026")], [0.36, hex("#4a3a12")],
+      [0.58, hex("#c9a227")], [0.80, hex("#f0d98a")], [1.00, hex("#fffdf5")]
+    ]);
+    var TONE = new Uint8Array(1200);
+    (function () {
+      for (var i = 0; i < 1200; i++) {
+        var v = i / 34;
+        TONE[i] = Math.min(255, Math.round(255 * Math.pow(v / (v + 0.85), 0.72)));
+      }
+    })();
+    var px = 0.1, py = 0.1, t = 0;
+    var hint = document.getElementById("chaosHint");
+    var PTS = 46000;
+
+    function alloc() {
+      var r = cv.getBoundingClientRect();
+      var maxPix = clamp(r.width * r.height * 1.1, 140000, 520000);
+      PTS = Math.round(clamp(maxPix * 0.09, 14000, 46000));
+      var ar = r.width / Math.max(1, r.height);
+      BH = Math.round(Math.sqrt(maxPix / ar));
+      BW = Math.round(BH * ar);
+      BH = Math.max(160, Math.min(BH, 900)); BW = Math.max(200, Math.min(BW, 1400));
+      dens = new Float32Array(BW * BH);
+      off.width = BW; off.height = BH;
+      img = octx.createImageData(BW, BH);
+      px = 0.1; py = 0.1;
+    }
+
+    return makeEngine({
+      id: "chaos", label: "図版二 混沌", short: "二 混沌", unit: "点",
+      resize: function () { if (fit(cv, 1)) alloc(); },
+      frame: function (dt) {
+        if (!BW) return;
+        t += dt * 0.001;
+        var a = 1.60 + 0.78 * Math.sin(t * 0.083),
+            b = -2.10 + 0.62 * Math.sin(t * 0.061 + 1.7),
+            c = 1.20 + 0.70 * Math.sin(t * 0.047 + 3.1),
+            d4 = 2.02 + 0.55 * Math.sin(t * 0.037 + 0.6);
+
+        var n = BW * BH, i;
+        for (i = 0; i < n; i++) dens[i] *= 0.972;
+
+        var sx = BW / 4.4, sy = BH / 4.4, ox = BW / 2, oy = BH / 2;
+        var X = px, Y = py;
+        for (i = 0; i < PTS; i++) {
+          var nx = Math.sin(a * Y) - Math.cos(b * X);
+          var ny = Math.sin(c * X) - Math.cos(d4 * Y);
+          X = nx; Y = ny;
+          var ix = (X * sx + ox) | 0, iy = (Y * sy + oy) | 0;
+          if (ix >= 0 && ix < BW && iy >= 0 && iy < BH) dens[iy * BW + ix] += 1;
+        }
+        px = X; py = Y;
+        this.ops += PTS;
+
+        var dd = img.data;
+        for (i = 0; i < n; i++) {
+          var q = (dens[i] * 34) | 0;
+          if (q > 1199) q = 1199;
+          var cIdx = TONE[q] << 2;
+          var o = i << 2;
+          dd[o] = LUT[cIdx]; dd[o + 1] = LUT[cIdx + 1]; dd[o + 2] = LUT[cIdx + 2]; dd[o + 3] = 255;
+        }
+        octx.putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(off, 0, 0, cv.width, cv.height);
+
+        if (hint && (this.frames % 30) === 0) {
+          hint.textContent = "毎秒 " + fmt(this.ops0 || 0) + " 個の点を置いている";
+        }
+      },
+      still: 260
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     図版三 — クラドニ図形（砂粒）
+     ══════════════════════════════════════════════════════ */
+  function engineSand(cv) {
+    var ctx = cv.getContext("2d", { alpha: true });
+    var W = 0, H = 0, img, dens, N = 0, sx, sy;
+    var LUT = ramp([
+      [0.00, hex("#000000"), 0], [0.14, hex("#3a2d10"), 130], [0.40, hex("#c9a227"), 235],
+      [0.70, hex("#f0d98a"), 255], [1.00, hex("#fffdf2"), 255]
+    ]);
+    var n1 = 4, n2 = 7, tn1 = 4, tn2 = 7, jolt = 0;
+    var elN = document.getElementById("sandN");
+    var s1 = document.getElementById("sandN1"), s2 = document.getElementById("sandN2");
+    var v1 = document.getElementById("sandV1"), v2 = document.getElementById("sandV2");
+    var manual = false, manualUntil = 0, tt = 0;
+    var TARGETS = [[3, 5], [4, 7], [5, 6], [2, 9], [6, 8], [3, 11], [7, 9], [4, 10], [8, 5]];
+    var ti = 0, nextAt = 6;
+
+    function alloc() {
+      W = cv.width; H = cv.height;
+      img = ctx.createImageData(W, H);
+      dens = new Uint16Array(W * H);
+      N = Math.round(clamp((W * H) / 46, 6000, 22000));
+      sx = new Float32Array(N); sy = new Float32Array(N);
+      for (var i = 0; i < N; i++) { sx[i] = Math.random(); sy[i] = Math.random(); }
+      if (elN) elN.textContent = fmt(N);
+    }
+
+    function shake() { jolt = 1; }
+
+    if (s1) s1.addEventListener("input", function () { tn1 = +s1.value; manual = true; manualUntil = tt + 14; jolt = 1; });
+    if (s2) s2.addEventListener("input", function () { tn2 = +s2.value; manual = true; manualUntil = tt + 14; jolt = 1; });
+    var shakeBtn = document.getElementById("sandShake");
+    if (shakeBtn) shakeBtn.addEventListener("click", shake);
+
+    return makeEngine({
+      id: "sand", label: "図版三 共鳴", short: "三 共鳴", unit: "砂粒",
+      resize: function () { if (fit(cv, 1, 760000)) alloc(); },
+      frame: function (dt) {
+        if (!N) return;
+        var sec = dt * 0.001;
+        tt += sec;
+        if (manual && tt > manualUntil) manual = false;
+        if (!manual && tt > nextAt) {
+          nextAt = tt + 7;
+          ti = (ti + 1) % TARGETS.length;
+          tn1 = TARGETS[ti][0]; tn2 = TARGETS[ti][1];
+          jolt = 1;
+          if (s1) s1.value = tn1;
+          if (s2) s2.value = tn2;
+        }
+        n1 += (tn1 - n1) * Math.min(1, sec * 1.6);
+        n2 += (tn2 - n2) * Math.min(1, sec * 1.6);
+        if (v1) v1.textContent = n1.toFixed(2);
+        if (v2) v2.textContent = n2.toFixed(2);
+        jolt *= 0.965;
+
+        var PI = Math.PI, i;
+        var an = n1 * PI, bm = n2 * PI;
+        for (i = 0; i < N; i++) {
+          var X = sx[i], Y = sy[i];
+          var snx = Math.sin(an * X), csx = Math.cos(an * X);
+          var smx = Math.sin(bm * X), cmx = Math.cos(bm * X);
+          var sny = Math.sin(an * Y), cny = Math.cos(an * Y);
+          var smy = Math.sin(bm * Y), cmy = Math.cos(bm * Y);
+          var f = snx * smy - smx * sny;
+          var gx = an * csx * smy - bm * cmx * sny;
+          var gy = bm * snx * cmy - an * smx * cny;
+          var g = Math.sqrt(gx * gx + gy * gy) + 1e-6;
+          var af = f < 0 ? -f : f;
+          var stp = Math.min(0.012, af * 0.020);
+          var sg = f < 0 ? -1 : 1;
+          var jit = (af * 0.010 + jolt * 0.020);
+          X -= sg * (gx / g) * stp + (Math.random() - 0.5) * jit;
+          Y -= sg * (gy / g) * stp + (Math.random() - 0.5) * jit;
+          if (X < 0) X = -X; else if (X > 1) X = 2 - X;
+          if (Y < 0) Y = -Y; else if (Y > 1) Y = 2 - Y;
+          sx[i] = X; sy[i] = Y;
+        }
+        this.ops += N;
+
+        dens.fill(0);
+        var pad = 0.055, span = 1 - pad * 2;
+        for (i = 0; i < N; i++) {
+          var ix = ((pad + sx[i] * span) * W) | 0;
+          var iy = ((pad + sy[i] * span) * H) | 0;
+          if (ix < 0 || iy < 0 || ix >= W - 1 || iy >= H - 1) continue;
+          var o = iy * W + ix;
+          dens[o] += 52; dens[o + 1] += 22; dens[o + W] += 22; dens[o + W + 1] += 10;
+        }
+        var d = img.data, n = W * H;
+        for (i = 0; i < n; i++) {
+          var q = dens[i]; if (q > 255) q = 255;
+          var c = q << 2, o2 = i << 2;
+          d[o2] = LUT[c]; d[o2 + 1] = LUT[c + 1]; d[o2 + 2] = LUT[c + 2]; d[o2 + 3] = LUT[c + 3];
+        }
+        ctx.putImageData(img, 0, 0);
+      },
+      still: 500
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     図版四 — 再帰する木
+     ══════════════════════════════════════════════════════ */
+  function engineTree(cv) {
+    var ctx = cv.getContext("2d", { alpha: false });
+    var W = 0, H = 0, dpr = 1, nodes = [], maxDepth = 9, t = 0;
+    var COLS = ["#5c470f", "#7b5f15", "#9a781b", "#b89122", "#cfa93a",
+                "#e0c46a", "#e6dba8", "#cfe6ea", "#a9dbe6", "#8fd2e2"];
+
+    function build() {
+      nodes = [];
+      var rnd = rngFrom((Math.random() * 4294967295) >>> 0);
+      var baseLen = Math.min(H, W * 0.62) * 0.168;
+      function branch(da, len, wid, depth, parent) {
+        var id = nodes.length;
+        nodes.push({ da: da, len: len, wid: wid, depth: depth, parent: parent,
+                     t0: depth * 0.20 + rnd() * 0.10, ph: rnd() * 6.28,
+                     wa: 0, ex: 0, ey: 0, leaf: false });
+        if (depth >= maxDepth || len < 3 * dpr) { nodes[id].leaf = true; return; }
+        var n = rnd() < 0.14 ? 3 : 2;
+        var spread = 0.36 + rnd() * 0.34;
+        for (var i = 0; i < n; i++) {
+          var a = (i - (n - 1) / 2) * spread + (rnd() - 0.5) * 0.26;
+          branch(a, len * (0.73 + rnd() * 0.11), wid * 0.71, depth + 1, id);
+        }
+      }
+      branch(0, baseLen, Math.max(2.4, 9 * dpr), 0, -1);
+      t = 0;
+    }
+
+    function alloc() {
+      var r = cv.getBoundingClientRect();
+      dpr = cv.width / Math.max(1, r.width);
+      W = cv.width; H = cv.height;
+      build();
+    }
+
+    cv.addEventListener("click", function () { build(); });
+
+    return makeEngine({
+      id: "tree", label: "図版四 成長", short: "四 成長", unit: "枝",
+      resize: function () { if (fit(cv, 2, 3200000)) alloc(); },
+      frame: function (dt) {
+        if (!nodes.length) return;
+        t += dt * 0.001;
+        ctx.fillStyle = "#070a14";
+        ctx.fillRect(0, 0, W, H);
+
+        var rootX = W * 0.5, rootY = H * 0.985;
+        var i, nd, p, buckets = [], leaves = [];
+        for (i = 0; i <= maxDepth; i++) buckets.push([]);
+
+        for (i = 0; i < nodes.length; i++) {
+          nd = nodes[i];
+          p = nd.parent >= 0 ? nodes[nd.parent] : null;
+          var baseA = p ? p.wa : -Math.PI / 2;
+          var sway = Math.sin(t * 0.85 + nd.ph + nd.depth * 0.5) * 0.011
+                   + Math.sin(t * 0.31 + nd.ph * 0.5) * 0.008;
+          nd.wa = baseA + nd.da + sway;
+          var sX = p ? p.ex : rootX, sY = p ? p.ey : rootY;
+          var g = clamp((t - nd.t0) / 0.55, 0, 1);
+          g = g * g * (3 - 2 * g);
+          nd.ex = sX + Math.cos(nd.wa) * nd.len * g;
+          nd.ey = sY + Math.sin(nd.wa) * nd.len * g;
+          if (g > 0.002) {
+            buckets[nd.depth].push(sX, sY, nd.ex, nd.ey);
+            if (nd.leaf && g > 0.85) leaves.push(nd.ex, nd.ey);
+          }
+        }
+        this.ops += nodes.length;
+
+        ctx.lineCap = "round";
+        for (i = 0; i <= maxDepth; i++) {
+          var arr = buckets[i];
+          if (!arr.length) continue;
+          ctx.beginPath();
+          for (var k = 0; k < arr.length; k += 4) {
+            ctx.moveTo(arr[k], arr[k + 1]);
+            ctx.lineTo(arr[k + 2], arr[k + 3]);
+          }
+          ctx.strokeStyle = COLS[Math.min(COLS.length - 1, i)];
+          ctx.lineWidth = Math.max(0.7, 9 * dpr * Math.pow(0.72, i));
+          ctx.stroke();
+        }
+
+        if (leaves.length) {
+          ctx.globalCompositeOperation = "lighter";
+          ctx.fillStyle = "rgba(150,225,235,0.42)";
+          var rr = Math.max(1.1, 1.7 * dpr);
+          ctx.beginPath();
+          for (i = 0; i < leaves.length; i += 2) {
+            ctx.moveTo(leaves[i] + rr, leaves[i + 1]);
+            ctx.arc(leaves[i], leaves[i + 1], rr, 0, TAU);
+          }
+          ctx.fill();
+          ctx.globalCompositeOperation = "source-over";
+        }
+      },
+      still: 300
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     図版五 — レイマーチング（WebGL）
+     ══════════════════════════════════════════════════════ */
+  var FS = [
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH",
+    "precision highp float;",
+    "#else",
+    "precision mediump float;",
+    "#endif",
+    "uniform vec2 uRes; uniform float uT; uniform vec2 uRot;",
+    "mat2 rot(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}",
+    "float sdBox(vec3 p, vec3 b){vec3 d=abs(p)-b;return min(max(d.x,max(d.y,d.z)),0.0)+length(max(d,0.0));}",
+    "float map(vec3 p){",
+    "  p.xz = rot(uT*0.11)*p.xz;",
+    "  p.xy = rot(uT*0.06)*p.xy;",
+    "  float d = sdBox(p, vec3(1.0));",
+    "  float s = 1.0;",
+    "  for(int m=0;m<4;m++){",
+    "    vec3 a = mod(p*s, 2.0) - 1.0;",
+    "    s *= 3.0;",
+    "    vec3 r = abs(1.0 - 3.0*abs(a));",
+    "    float da = max(r.x,r.y), db = max(r.y,r.z), dc = max(r.z,r.x);",
+    "    float c = (min(da,min(db,dc)) - 1.0)/s;",
+    "    d = max(d, c);",
+    "  }",
+    "  return d;",
+    "}",
+    "vec3 nrm(vec3 p){ vec2 e=vec2(0.0012,0.0);",
+    "  return normalize(vec3(map(p+e.xyy)-map(p-e.xyy), map(p+e.yxy)-map(p-e.yxy), map(p+e.yyx)-map(p-e.yyx))); }",
+    "const vec3 BG = vec3(0.0007,0.0011,0.0028);",
+    "void main(){",
+    "  vec2 uv = (gl_FragCoord.xy*2.0 - uRes)/uRes.y;",
+    "  vec3 ro = vec3(0.0, 0.0, -3.85);",
+    "  vec3 rd = normalize(vec3(uv, 1.62));",
+    "  ro.yz = rot(uRot.y)*ro.yz; rd.yz = rot(uRot.y)*rd.yz;",
+    "  ro.xz = rot(uRot.x)*ro.xz; rd.xz = rot(uRot.x)*rd.xz;",
+    "  float t = 0.0, glow = 0.0; bool hit = false; float steps = 0.0;",
+    "  for(int i=0;i<90;i++){",
+    "    vec3 p = ro + rd*t;",
+    "    float d = map(p);",
+    "    if(d < 0.0012*t){ hit = true; break; }",
+    "    if(t > 10.0) break;",
+    "    glow += 0.010/(1.0 + d*d*220.0);",
+    "    t += d*0.86; steps += 1.0;",
+    "  }",
+    "  vec3 col = BG;",
+    "  if(hit){",
+    "    vec3 p = ro + rd*t;",
+    "    vec3 n = nrm(p);",
+    "    vec3 l1 = normalize(vec3(0.55,0.82,-0.42));",
+    "    vec3 l2 = normalize(vec3(-0.72,0.18,0.62));",
+    "    float df = max(dot(n,l1),0.0);",
+    "    float fl = max(dot(n,l2),0.0);",
+    "    float ao = 1.0 - steps/90.0;",
+    "    col = vec3(0.79,0.635,0.153)*df*1.20 + vec3(0.30,0.36,0.80)*fl*0.55 + vec3(0.035,0.045,0.10);",
+    "    col *= 0.30 + 0.70*ao;",
+    "    float sp = pow(max(dot(reflect(rd,n), l1), 0.0), 26.0);",
+    "    col += vec3(1.0,0.94,0.78)*sp*0.55;",
+    "    col = mix(col, BG, clamp((t-2.0)/6.6, 0.0, 1.0));",
+    "  }",
+    "  col += vec3(0.34,0.30,0.62)*glow*0.42;",
+    "  col = pow(max(col, 0.0), vec3(0.4545));",
+    "  gl_FragColor = vec4(col, 1.0);",
+    "}"
+  ].join("\n");
+
+  var VS = "attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }";
+
+  function engineSolid(cv) {
+    var gl = null;
+    try {
+      gl = cv.getContext("webgl", { antialias: false, alpha: false, depth: false, powerPreference: "high-performance" })
+        || cv.getContext("experimental-webgl", { antialias: false, alpha: false, depth: false });
+    } catch (e) { gl = null; }
+    if (!gl) return null;
+
+    function sh(type, src) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) return null;
+      return s;
+    }
+    var vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS);
+    if (!vs || !fs) return null;
+    var pr = gl.createProgram();
+    gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return null;
+    gl.useProgram(pr);
+
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(pr, "p");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    var uRes = gl.getUniformLocation(pr, "uRes"),
+        uT = gl.getUniformLocation(pr, "uT"),
+        uRot = gl.getUniformLocation(pr, "uRot");
+
+    var t = 0, rx = 0.5, ry = -0.22, drag = false, lx = 0, ly = 0, vrx = 0, vry = 0;
+    cv.style.touchAction = "pan-y";
+    cv.style.cursor = "grab";
+    cv.addEventListener("pointerdown", function (e) {
+      drag = true; lx = e.clientX; ly = e.clientY; cv.style.cursor = "grabbing";
+      if (cv.setPointerCapture) { try { cv.setPointerCapture(e.pointerId); } catch (x) {} }
+    });
+    cv.addEventListener("pointermove", function (e) {
+      if (!drag) return;
+      vrx = (e.clientX - lx) * 0.006; vry = (e.clientY - ly) * 0.006;
+      rx += vrx; ry += vry; lx = e.clientX; ly = e.clientY;
+    });
+    function end() { drag = false; cv.style.cursor = "grab"; }
+    cv.addEventListener("pointerup", end);
+    cv.addEventListener("pointercancel", end);
+    cv.addEventListener("pointerleave", end);
+
+    var small = Math.min(window.innerWidth, window.innerHeight) < 720;
+
+    return makeEngine({
+      id: "solid", label: "図版五 立体", short: "五 立体", unit: "光線",
+      resize: function () { fit(cv, small ? 0.55 : 0.8, 460000); },
+      frame: function (dt) {
+        t += dt * 0.001;
+        if (!drag) { rx += 0.0009 * dt * 0.06 + vrx * 0.94; ry += vry * 0.94; vrx *= 0.92; vry *= 0.92; }
+        ry = clamp(ry, -1.25, 1.25);
+        gl.viewport(0, 0, cv.width, cv.height);
+        gl.uniform2f(uRes, cv.width, cv.height);
+        gl.uniform1f(uT, t);
+        gl.uniform2f(uRot, rx, ry);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        this.ops += cv.width * cv.height;
+      },
+      still: 2
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     終 — 文字になる粒
+     ══════════════════════════════════════════════════════ */
+  function engineWord(cv) {
+    var ctx = cv.getContext("2d", { alpha: false });
+    var W = 0, H = 0, dpr = 1;
+    var off = document.createElement("canvas"), octx = off.getContext("2d", { willReadFrequently: true });
+    var WORDS = ["このページを", "書いたのは", "AI です"];
+    var wi = 0, phase = 0, timer = 0;
+    var N = 0, x, y, vx, vy, tx, ty, tint;
+    var SERIF = getComputedStyle(ROOT).getPropertyValue("--serif") || "serif";
+
+    function alloc() {
+      var r = cv.getBoundingClientRect();
+      dpr = cv.width / Math.max(1, r.width);
+      W = cv.width; H = cv.height;
+      off.width = W; off.height = H;
+      N = Math.round(clamp((W * H) / 130, 5000, 15000));
+      x = new Float32Array(N); y = new Float32Array(N);
+      vx = new Float32Array(N); vy = new Float32Array(N);
+      tx = new Float32Array(N); ty = new Float32Array(N);
+      tint = new Uint8Array(N);
+      for (var i = 0; i < N; i++) {
+        x[i] = Math.random() * W; y[i] = Math.random() * H;
+        tx[i] = x[i]; ty[i] = y[i];
+        tint[i] = Math.random() < 0.17 ? 1 : 0;
+      }
+      setWord(WORDS[wi]);
+    }
+
+    function sampleText(str) {
+      octx.setTransform(1, 0, 0, 1, 0, 0);
+      octx.clearRect(0, 0, W, H);
+      var size = Math.min(H * 0.42, (W * 0.86) / Math.max(1, str.length) * 1.06);
+      octx.font = "400 " + size + "px " + SERIF;
+      octx.textAlign = "center";
+      octx.textBaseline = "middle";
+      octx.fillStyle = "#fff";
+      octx.fillText(str, W / 2, H / 2);
+      var d = octx.getImageData(0, 0, W, H).data;
+      var pts = [], step = Math.max(2, Math.round(1.9 * dpr));
+      for (var j = 0; j < H; j += step) {
+        for (var i = 0; i < W; i += step) {
+          if (d[(j * W + i) * 4 + 3] > 128) pts.push(i, j);
+        }
+      }
+      return pts;
+    }
+
+    function setWord(str) {
+      var pts = sampleText(str), m = pts.length / 2, i;
+      if (!m) return;
+      for (i = 0; i < N; i++) {
+        var k = (i % m) * 2;
+        tx[i] = pts[k] + (Math.random() - 0.5) * 2.2 * dpr;
+        ty[i] = pts[k + 1] + (Math.random() - 0.5) * 2.2 * dpr;
+      }
+    }
+
+    function scatter() {
+      for (var i = 0; i < N; i++) {
+        var a = Math.random() * TAU, r = (0.35 + Math.random() * 0.8) * Math.min(W, H);
+        tx[i] = W / 2 + Math.cos(a) * r;
+        ty[i] = H / 2 + Math.sin(a) * r * 0.6;
+      }
+    }
+
+    return makeEngine({
+      id: "word", label: "終 — 署名", short: "終 署名", unit: "粒子",
+      resize: function () { if (fit(cv, 1.6)) alloc(); },
+      frame: function (dt) {
+        if (!N) return;
+        var sec = Math.min(0.05, dt * 0.001);
+        timer += sec;
+        if (phase === 0 && timer > (wi === WORDS.length - 1 ? 5.2 : 3.4)) {
+          phase = 1; timer = 0; scatter();
+        } else if (phase === 1 && timer > 0.8) {
+          phase = 0; timer = 0;
+          wi = (wi + 1) % WORDS.length;
+          setWord(WORDS[wi]);
+        }
+
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = "rgba(5,7,15,0.30)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalCompositeOperation = "lighter";
+
+        /* 60fps 基準に正規化して、遅い端末でも同じ速さで集まるようにする */
+        var st = clamp(sec * 60, 0.35, 2.4);
+        var k = 0.030 * st, damp = Math.pow(0.865, st);
+        var p1 = [], p2 = [];
+        for (var i = 0; i < N; i++) {
+          vx[i] = (vx[i] + (tx[i] - x[i]) * k) * damp;
+          vy[i] = (vy[i] + (ty[i] - y[i]) * k) * damp;
+          x[i] += vx[i] * st; y[i] += vy[i] * st;
+          (tint[i] ? p2 : p1).push(x[i], y[i]);
+        }
+        this.ops += N;
+
+        var rr = Math.max(0.8, 1.15 * dpr);
+        ctx.fillStyle = "rgba(226,232,248,0.62)";
+        ctx.beginPath();
+        for (i = 0; i < p1.length; i += 2) { ctx.moveTo(p1[i] + rr, p1[i + 1]); ctx.arc(p1[i], p1[i + 1], rr, 0, TAU); }
+        ctx.fill();
+        ctx.fillStyle = "rgba(240,217,138,0.60)";
+        ctx.beginPath();
+        for (i = 0; i < p2.length; i += 2) { ctx.moveTo(p2[i] + rr, p2[i + 1]); ctx.arc(p2[i], p2[i + 1], rr, 0, TAU); }
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+      },
+      still: 240
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     組み立て
+     ══════════════════════════════════════════════════════ */
+  var FACTORY = { flow: engineFlow, life: engineLife, chaos: engineChaos,
+                  sand: engineSand, tree: engineTree, solid: engineSolid, word: engineWord };
+
+  var canvases = ROOT.querySelectorAll("canvas[data-engine]");
+  for (var ci = 0; ci < canvases.length; ci++) {
+    (function (cv) {
+      var kind = cv.getAttribute("data-engine");
+      var e = FACTORY[kind] ? FACTORY[kind](cv) : null;
+      if (!e) {
+        var sec = cv.closest ? cv.closest("section") : null;
+        if (sec) sec.parentNode.removeChild(sec);
+        return;
+      }
+      e.canvas = cv;
+      e.section = cv.closest ? cv.closest("section") : null;
+      if (e.section && e.section.hasAttribute("hidden")) e.section.removeAttribute("hidden");
+      e.resize();
+      e.ready = true;
+      if (window.ResizeObserver) {
+        var ro = new ResizeObserver(function () { e.resize(); });
+        ro.observe(cv);
+      }
+    })(canvases[ci]);
+  }
+
+  /* 可視判定 */
+  var rigNow = document.getElementById("rigNow");
+  if (window.IntersectionObserver) {
+    var io = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        var en = entries[i];
+        for (var k = 0; k < engines.length; k++) {
+          if (engines[k].canvas === en.target) {
+            engines[k].active = en.isIntersecting;
+            if (en.isIntersecting && rigNow) rigNow.textContent = engines[k].label;
+          }
+        }
+      }
+    }, { rootMargin: "18% 0px 18% 0px", threshold: 0 });
+    for (var ei = 0; ei < engines.length; ei++) io.observe(engines[ei].canvas);
+  } else {
+    for (var ej = 0; ej < engines.length; ej++) engines[ej].active = true;
+  }
+
+  /* 出現アニメ */
+  if (window.IntersectionObserver) {
+    var io2 = new IntersectionObserver(function (es) {
+      for (var i = 0; i < es.length; i++) if (es[i].isIntersecting) {
+        es[i].target.classList.add("is-in"); io2.unobserve(es[i].target);
+      }
+    }, { threshold: 0.12 });
+    var rises = ROOT.querySelectorAll(".rise");
+    for (var ri = 0; ri < rises.length; ri++) io2.observe(rises[ri]);
+  } else {
+    var all = ROOT.querySelectorAll(".rise");
+    for (var ra = 0; ra < all.length; ra++) all[ra].classList.add("is-in");
+  }
+
+  /* ── 主ループ ─────────────────────────────────────────── */
+  var last = performance.now(), acc = 0, fpsFrames = 0, fpsAcc = 0;
+  var elOps = document.getElementById("rigOps"), elFps = document.getElementById("rigFps");
+  var elTally = document.getElementById("tallyN"), elDevFps = document.getElementById("devFps");
+
+  function loop(now) {
+    var dt = now - last;
+    last = now;
+    if (dt > 60) dt = 60;
+
+    for (var i = 0; i < engines.length; i++) {
+      var e = engines[i];
+      if (!e.ready) continue;
+      if (!e.active) continue;
+      if (REDUCED && e.frames >= e.still) continue;
+      var before = e.ops;
+      e.frame(dt);
+      e.frames++;
+      e.opsWin += (e.ops - before);
+      TOTAL += (e.ops - before);
+    }
+
+    acc += dt; fpsAcc += dt; fpsFrames++;
+    if (fpsAcc >= 500) {
+      fpsAvg = Math.round(1000 / (fpsAcc / fpsFrames));
+      fpsAcc = 0; fpsFrames = 0;
+      if (elFps) elFps.textContent = fpsAvg;
+      if (elDevFps) elDevFps.textContent = fpsAvg;
+    }
+    if (acc >= 1000) {
+      var rate = 0;
+      for (var j = 0; j < engines.length; j++) {
+        var en = engines[j];
+        en.ops0 = Math.round(en.opsWin * 1000 / acc);
+        if (en.ops0 > en.peak) en.peak = en.ops0;
+        rate += en.ops0;
+        en.opsWin = 0;
+      }
+      if (elOps) elOps.textContent = fmt(rate);
+      acc = 0;
+      updateBars();
+    }
+    if (elTally) elTally.textContent = fmt(TOTAL);
+    requestAnimationFrame(loop);
+  }
+
+  /* ── 解剖ボード ───────────────────────────────────────── */
+  var barsEl = document.getElementById("bars"), barRefs = [];
+  (function () {
+    if (!barsEl) return;
+    for (var i = 0; i < engines.length; i++) {
+      var e = engines[i];
+      var row = document.createElement("div");
+      row.className = "bar";
+      row.innerHTML = '<span class="bar__k"></span><span class="bar__t"><i class="bar__f"></i></span><span class="bar__v">—</span>';
+      row.querySelector(".bar__k").textContent = e.short;
+      row.setAttribute("data-empty", "1");
+      barsEl.appendChild(row);
+      barRefs.push({ e: e, row: row, fill: row.querySelector(".bar__f"), val: row.querySelector(".bar__v") });
+    }
+  })();
+
+  function updateBars() {
+    if (!barRefs.length) return;
+    var max = 1;
+    for (var i = 0; i < barRefs.length; i++) if (barRefs[i].e.peak > max) max = barRefs[i].e.peak;
+    for (i = 0; i < barRefs.length; i++) {
+      var b = barRefs[i];
+      if (!b.e.peak) continue;
+      b.row.setAttribute("data-empty", "0");
+      b.fill.style.width = (b.e.peak / max * 100).toFixed(1) + "%";
+      b.val.textContent = fmt(b.e.peak) + " " + b.e.unit;
+      if (b.e.active) b.row.classList.add("is-live"); else b.row.classList.remove("is-live");
+    }
+  }
+
+  /* ── 証拠の数字（実測） ───────────────────────────────── */
+  (function () {
+    function n(id) { return document.getElementById(id); }
+    var imgs = ROOT.querySelectorAll("img, picture, video, iframe, object, embed").length;
+    var ext = ROOT.querySelectorAll("link[href], script[src], [style*='url('], svg use[href]").length;
+    var src = ROOT.outerHTML;
+    var bytes = new Blob([src]).size;
+    var lines = 0;
+    var codes = ROOT.querySelectorAll("script, style");
+    for (var i = 0; i < codes.length; i++) lines += codes[i].textContent.split("\n").length;
+
+    if (n("stImg")) n("stImg").innerHTML = imgs + '<small>枚</small>';
+    if (n("stExt")) n("stExt").innerHTML = ext + '<small>件</small>';
+    if (n("stSize")) n("stSize").innerHTML = Math.round(bytes / 1024) + '<small>KB</small>';
+    if (n("stLines")) n("stLines").innerHTML = fmt(lines) + '<small>行</small>';
+
+    if (n("devCores")) n("devCores").textContent = (navigator.hardwareConcurrency || "—");
+    if (n("devScreen")) n("devScreen").textContent = (screen.width * (window.devicePixelRatio || 1) | 0) + "×" + (screen.height * (window.devicePixelRatio || 1) | 0);
+    if (n("devDpr")) n("devDpr").textContent = (window.devicePixelRatio || 1).toFixed(2).replace(/\.?0+$/, "");
+  })();
+
+  window.addEventListener("resize", function () {
+    for (var i = 0; i < engines.length; i++) if (engines[i].ready) engines[i].resize();
+  }, { passive: true });
+
+  requestAnimationFrame(function (t0) { last = t0; requestAnimationFrame(loop); });
+})();
+</script>
+
+</div><!-- /#opus -->
